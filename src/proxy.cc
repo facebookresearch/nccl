@@ -906,7 +906,7 @@ ncclResult_t ncclProxyProgressCreate(struct ncclComm* comm) {
   }
   return ncclSuccess;
 }
-
+static int nProxyComms = 0;
 ncclResult_t ncclProxyProgressDestroy(struct ncclComm* comm) {
   struct ncclProxyProgressState* state = &comm->proxyState.progressState;
 
@@ -925,9 +925,12 @@ ncclResult_t ncclProxyProgressDestroy(struct ncclComm* comm) {
     free(state->pools);
     state->pools = next;
   }
-
-  ncclProfilingDump();
-  ntraceProfilingDump();
+  // Dump profiling results only after destroying the last communicator
+  nProxyComms--;
+  if (nProxyComms == 0){
+    ncclProfilingDump();
+    ntraceProfilingDump();
+  }
   TIME_PRINT("Proxy");
   return ncclSuccess;
 }
@@ -1371,6 +1374,8 @@ static ncclResult_t proxyConnSetupConnect(int type, struct ncclProxyLocalPeer* p
 
 void* ncclProxyService(void* _args) {
   struct ncclComm* comm =  (struct ncclComm *) _args;
+  printf("pid %d ncclProxyService for comm %p, rank %d nrank %d, nProxyComms=%d\n", getpid(), comm, comm->rank, comm->nRanks, nProxyComms);
+  nProxyComms++;
   if (CPU_COUNT(&comm->cpuAffinity)) sched_setaffinity(0, sizeof(cpu_set_t), &comm->cpuAffinity);
   if (ncclSetThreadContext(comm) != ncclSuccess) {
     WARN("[Proxy Service] Failed to set CUDA context on device %d", comm->cudaDev);
