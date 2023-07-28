@@ -16,6 +16,7 @@
 #include "enqueue.h"
 #include "graph.h"
 #include "argcheck.h"
+#include "tuning.h"
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
@@ -216,6 +217,11 @@ static ncclResult_t commFree(ncclComm_t comm) {
 
   ncclCudaHostFree((void *)comm->abortFlag);
   free(comm->netName);
+
+  if (comm->performanceTuner != NULL) {
+    NCCLCHECK(comm->performanceTuner->destroy());
+    NCCLCHECK(ncclClosePerformanceTuner(&comm->performanceTuner));
+  }
 
   commPoison(comm); // poison comm before free to avoid comm reuse.
   free(comm);
@@ -1113,6 +1119,16 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
   NCCLCHECKGOTO(commAlloc(newcomm, nranks, myrank), res, fail);
   NCCLCHECKGOTO(initTransportsRank(*newcomm, &commId), res, fail);
 
+  if (ncclLoadPerformanceTuner(&(*newcomm)->performanceTuner) == ncclSuccess) {
+    auto init = (*newcomm)->performanceTuner->init((*newcomm)->nRanks, (*newcomm)->nNodes, ncclDebugLog);
+    if (init != ncclSuccess) {
+      INFO(NCCL_INIT, "Failed to init performance tuner: '%s'", (*newcomm)->performanceTuner->name);
+      (*newcomm)->performanceTuner = NULL;
+    }
+  }
+
+  NCCLCHECKGOTO(allocThreadedRanksMd(comm, commId), res, fail);
+
   // update communicator state
   comm->initState = ncclSuccess;
 
@@ -1470,6 +1486,8 @@ static ncclResult_t commDestroySync(struct ncclAsyncJob* job_) {
   while (comm->persistentRefs != 0) {
     NCCLCHECKGOTO(ncclCommPollCallbacks(comm, /*waitSome=*/true), ret, fail);
   }
+
+  NCCLCHECKGOTO(freeThreadedRanksMd(comm->threadedRanks.md, comm->rank), ret, fail);
 
   if (savedDevice != commDevice) {
     CUDACHECKGOTO(cudaSetDevice(savedDevice), ret, fail);

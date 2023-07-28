@@ -13,13 +13,14 @@ enum ncclProxyProfileState {
   ncclProxyProfileBegin = 0,
 
   ncclProxyProfileSendGPUWait = 1,
-  ncclProxyProfileSendWait = 2,
+  ncclProxyProfileRemFIFOWait = 2,
+  ncclProxyProfileSendWait = 3,
 
-  ncclProxyProfileRecvWait = 1,
-  ncclProxyProfileRecvFlushWait = 2,
-  ncclProxyProfileRecvGPUWait = 3,
+  ncclProxyProfileRecvWait = 4,
+  ncclProxyProfileRecvFlushWait = 5,
+  ncclProxyProfileRecvGPUWait = 6,
 
-  ncclProxyProfileEnd = 4,
+  ncclProxyProfileEnd = 7,
 
   ncclProxyProfileSleep = 8,
   ncclProxyProfileWakeup = 9,
@@ -32,6 +33,11 @@ enum ncclProxyProfileState {
 };
 
 ncclResult_t ncclProfilingRecord(struct ncclProxyArgs* args, int sub, int step, int state);
+#ifdef ENABLE_FB_PROFILE_PROXY
+ncclResult_t ncclProfilingRecordUpdate(struct ncclProxyArgs* args, int sub, int step, int peer, int chunkSize);
+#else
+#define ncclProfilingRecordUpdate(args, sub, step, peer, chunkSize) do {} while (0)
+#endif
 void ncclProfilingDump();
 
 #endif

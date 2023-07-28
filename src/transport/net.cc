@@ -12,6 +12,7 @@
 #include "gdrwrap.h"
 #include "shm.h"
 #include "profiler.h"
+#include "ntrace_profiler.h"
 
 static_assert(sizeof(ncclNetHandle_t) <= CONNECT_SIZE, "NET Connect info is too large");
 
@@ -943,7 +944,13 @@ static ncclResult_t sendProxyProgress(struct ncclComm* comm, struct ncclProxyArg
             }
           }
           if (ready) {
+            // Profiler will not update if already in ncclProxyProfileRemFIFOWait state
+            ncclProfilingRecord(args, s, sub->transmitted, ncclProxyProfileRemFIFOWait);
+
             // Data is ready, try to send.
+#ifdef ENABLE_NTRACE
+            ntraceLogPeerRanks(resources->localRank, resources->remoteRank);
+#endif
             NCCLCHECK(ncclNetIsend(comm, resources->netSendComm, buff, size, resources->rank, mhandle, sub->requests+buffSlot));
             if (sub->requests[buffSlot] != NULL) {
               TRACE(NCCL_NET, "sendProxy [%ld/%d] Isend posted, req %p", sub->transmitted, buffSlot, sub->requests[buffSlot]);
@@ -952,6 +959,7 @@ static ncclResult_t sendProxyProgress(struct ncclComm* comm, struct ncclProxyArg
               __sync_synchronize();
               sub->transmitted += args->sliceSteps;
               for (uint64_t step=sub->transmitted-args->sliceSteps; step<sub->transmitted; step++) ncclProfilingRecord(args, s, step, ncclProxyProfileSendWait);
+              for (uint64_t step=sub->transmitted-args->sliceSteps; step<sub->transmitted; step++) ncclProfilingRecordUpdate(args, s, step, resources->remoteRank, size);
               args->idle = 0;
               continue;
             }
@@ -1066,12 +1074,16 @@ static ncclResult_t recvProxyProgress(struct ncclComm* comm, struct ncclProxyArg
         uint64_t step = subGroup->posted;
         struct recvResources* resources = (struct recvResources*) (subGroup->connection->transportResources);
         void** requestPtr = subGroup->requests+(step%NCCL_STEPS);
+#ifdef ENABLE_NTRACE
+        ntraceLogPeerRanks(resources->localRank, resources->remoteRank);
+#endif
         NCCLCHECK(ncclNetIrecv(comm, resources->netRecvComm, subCount, ptrs, sizes, tags, mhandles, requestPtr));
         if (*requestPtr) {
           for (int i=0; i<subGroup->groupSize; i++) {
             struct ncclProxySubArgs* sub = subGroup+i;
             sub->posted += args->sliceSteps;
             for (uint64_t step=sub->posted-args->sliceSteps; step<sub->posted; step++) ncclProfilingRecord(args, s+i, step, ncclProxyProfileRecvWait);
+            for (uint64_t step=sub->posted-args->sliceSteps; step<sub->posted; step++) ncclProfilingRecordUpdate(args, s+i, step, resources->remoteRank, sizes[i]);
           }
           args->idle = 0;
         }
@@ -1129,6 +1141,9 @@ static ncclResult_t recvProxyProgress(struct ncclComm* comm, struct ncclProxyArg
                 }
               }
               struct recvResources* resources = (struct recvResources*) (subGroup->connection->transportResources);
+#ifdef ENABLE_NTRACE
+              ntraceLogPeerRanks(resources->localRank, resources->remoteRank);
+#endif
               NCCLCHECK(ncclNetIflush(comm, resources->netRecvComm, subCount, ptrs, sizes, mhandles, subGroup->requests+(step%NCCL_STEPS)));
             }
           }

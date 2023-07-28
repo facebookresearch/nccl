@@ -10,6 +10,17 @@
 #include "socket.h"
 #include "shm.h"
 #include "profiler.h"
+
+// when build NCCL with ntrace_rt.h, we ensure ntrace_rt.h is always
+// referenced via ibvwrap.h after verbs type definition, to obtain type
+// definition while avoiding cross-reference issues.
+#ifdef ENABLE_NTRACE
+#include "ibvwrap.h"
+#else
+// for reference to no-op ntraceProfilingDump
+#include "ntrace_profiler.h"
+#endif
+
 #define ENABLE_TIMER 0
 #include "timer.h"
 
@@ -895,7 +906,7 @@ ncclResult_t ncclProxyProgressCreate(struct ncclComm* comm) {
   }
   return ncclSuccess;
 }
-
+static int nProxyComms = 0;
 ncclResult_t ncclProxyProgressDestroy(struct ncclComm* comm) {
   struct ncclProxyProgressState* state = &comm->proxyState.progressState;
 
@@ -914,8 +925,12 @@ ncclResult_t ncclProxyProgressDestroy(struct ncclComm* comm) {
     free(state->pools);
     state->pools = next;
   }
-
-  ncclProfilingDump();
+  // Dump profiling results only after destroying the last communicator
+  nProxyComms--;
+  if (nProxyComms == 0){
+    ncclProfilingDump();
+    ntraceProfilingDump();
+  }
   TIME_PRINT("Proxy");
   return ncclSuccess;
 }
@@ -1301,7 +1316,7 @@ static ncclResult_t proxyProgressAsync(struct ncclProxyAsyncOp* op, struct ncclC
       __atomic_store_n(&op->connection->state, connSetupDone, __ATOMIC_RELEASE);
     else if (op->type == ncclProxyMsgConnect)
       __atomic_store_n(&op->connection->state, connConnected, __ATOMIC_RELEASE);
-    /* if setup or connect is done, we should not return any error at this point since 
+    /* if setup or connect is done, we should not return any error at this point since
      * ncclSocketSend might already send the respBuff to the requester. If we still choose
      * to abort and close the connection, it can cause segfault if the requester is using
      * the respBuff. */
@@ -1359,6 +1374,8 @@ static ncclResult_t proxyConnSetupConnect(int type, struct ncclProxyLocalPeer* p
 
 void* ncclProxyService(void* _args) {
   struct ncclComm* comm =  (struct ncclComm *) _args;
+  printf("pid %d ncclProxyService for comm %p, rank %d nrank %d, nProxyComms=%d\n", getpid(), comm, comm->rank, comm->nRanks, nProxyComms);
+  nProxyComms++;
   if (CPU_COUNT(&comm->cpuAffinity)) sched_setaffinity(0, sizeof(cpu_set_t), &comm->cpuAffinity);
   if (ncclSetThreadContext(comm) != ncclSuccess) {
     WARN("[Proxy Service] Failed to set CUDA context on device %d", comm->cudaDev);
