@@ -1387,9 +1387,6 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
 
   INFO(NCCL_INIT,"comm %p rank %d nranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx - Init COMPLETE", comm, comm->rank, comm->nRanks, comm->cudaDev, comm->nvmlDev, comm->busId, (unsigned long long)hashUniqueId(job->commId));
 
-  /* allocate dda metadata as the last part of the communicator creation */
-  NCCLCHECKGOTO(allocDDAMd(comm), res, fail);
-
   comm->ctranMapper = new ctranMapper(comm, job->parent, parentRanks);
   comm->ctranGpe = new ctranGpe(comm->cudaDev);
 
@@ -1764,7 +1761,9 @@ static ncclResult_t commDestroySync(struct ncclAsyncJob* job_) {
 
   delete comm->ctranMapper;
   delete comm->ctranGpe;
-  NCCLCHECKGOTO(freeDDAMd(comm), ret, fail);
+  if (comm->dda) {
+    NCCLCHECKGOTO(freeDDAMd(comm), ret, fail);
+  }
 
   CUDACHECKGOTO(cudaGetDevice(&savedDevice), ret, fail);
   if (savedDevice != commDevice) {

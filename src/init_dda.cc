@@ -43,6 +43,11 @@ ncclDDAAllReduceAlgo_t getAllReduceAlgo(const void* sendbuff, void* recvbuff,
     goto algo_default;
   }
 
+  /* allocate dda metadata if not initialized yet, fallback if failed to initialize */
+  if (!comm->dda && allocDDAMd(comm) != ncclSuccess) {
+    goto algo_default;
+  }
+
   /* first try to see if the threaded DDA algo would work */
   numDDAThreads = comm->dda->threadSharedMd->registeredRanks.size();
 
@@ -154,6 +159,7 @@ ncclResult_t allocDDAMd(ncclComm *comm) {
   ddaThreadSharedMdListMutex.unlock();
 
   comm->dda = new ddaPrivateMd(threadSharedMd, comm);
+  INFO(NCCL_INIT, "Initialized DDA for commHash %lu", comm->commHash);
 
   return ret;
 }
