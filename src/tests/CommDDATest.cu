@@ -8,7 +8,7 @@
 TEST(CommDDATest, Clique) {
   CUDACHECKIGNORE(cudaSetDevice(0));
 
-  ncclUniqueId x;
+  uint64_t x = 0;
   auto md = std::make_unique<ddaThreadSharedMd>(x);
   md->insertRank(0);
   md->insertRank(1);

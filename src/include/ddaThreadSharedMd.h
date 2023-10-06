@@ -11,8 +11,8 @@
 
 class ddaThreadSharedMd {
  public:
-  ddaThreadSharedMd(ncclUniqueId commId) {
-    this->commId = commId;
+  ddaThreadSharedMd(uint64_t commHash) {
+    this->commHash = commHash;
   }
 
   void insertRank(int rank) {
@@ -30,7 +30,7 @@ class ddaThreadSharedMd {
     return (got != this->registeredRanks.end());
   }
 
-  ncclUniqueId commId;
+  uint64_t commHash;
   std::vector<int> registeredRanks;
 };
 

@@ -26,7 +26,7 @@ typedef enum {
 ncclDDAAllReduceAlgo_t getAllReduceAlgo(const void* sendbuff, void* recvbuff,
                                         size_t count, ncclDataType_t datatype, ncclRedOp_t op,
                                         ncclComm* comm);
-ncclResult_t allocDDAMd(ncclComm *comm, ncclUniqueId commId);
+ncclResult_t allocDDAMd(ncclComm *comm);
 ncclResult_t freeDDAMd(ncclComm *comm);
 
 static inline int typeSize(ncclDataType_t datatype)
