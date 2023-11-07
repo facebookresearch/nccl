@@ -30,6 +30,7 @@ extern "C" {
 #include <stdint.h>
 
 #define NCCL_REGISTRATION_SUPPORTED
+#define NCCL_RMA_SUPPORTED
 
 /* Opaque handle to communicator */
 typedef struct ncclComm* ncclComm_t;
@@ -37,6 +38,8 @@ typedef struct ncclComm* ncclComm_t;
 
 #define NCCL_UNIQUE_ID_BYTES 128
 typedef struct { char internal[NCCL_UNIQUE_ID_BYTES]; } ncclUniqueId;
+
+typedef struct ncclWin* ncclWin_t;
 
 /* Error type */
 typedef enum { ncclSuccess                 =  0,
@@ -497,6 +500,25 @@ ncclResult_t pncclGroupStart();
  */
 ncclResult_t  ncclGroupEnd();
 ncclResult_t pncclGroupEnd();
+
+/*
+ * Create a window object for one-sided communication and shared memory access
+ * and allocate memory at each process.
+ */
+ncclResult_t  ncclWinAllocShared(size_t size, ncclComm_t comm, ncclWin_t* win);
+ncclResult_t pncclWinAllocShared(size_t size, ncclComm_t comm, ncclWin_t* win);
+
+/*
+ * Query remote address cached in the window object
+ */
+ncclResult_t  ncclWinSharedQuery(int peer, ncclComm_t comm, ncclWin_t win, void **addr);
+ncclResult_t pncclWinSharedQuery(int peer, ncclComm_t comm, ncclWin_t win, void **addr);
+
+/*
+ * Free the window object and free the allocated memory
+ */
+ncclResult_t  ncclWinFree(ncclComm_t comm, ncclWin_t win);
+ncclResult_t pncclWinFree(ncclComm_t comm, ncclWin_t win);
 
 #ifdef __cplusplus
 } // end extern "C"

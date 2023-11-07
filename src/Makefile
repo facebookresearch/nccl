@@ -28,7 +28,7 @@ LIBSRCFILES += ctran/backends/nvl/ctranNvl.cc ctran/backends/nvl/ctranNvlRequest
 LIBSRCFILES += ctran/mapper/ctranMapper.cc \
 							 ctran/mapper/ctranMapperRequest.cc ctran/mapper/ctranMapperMemPool.cc
 LIBSRCFILES += ctran/gpe/ctranGpe.cc ctran/gpe/ctranGpeImpl.cc
-LIBSRCFILES += ctran/frontend/ncclRegister.cc
+LIBSRCFILES += ctran/frontend/ncclRegister.cc ctran/frontend/ncclWin.cc
 LIBSRCFILES += ctran/algos/allGatherDirect.cc ctran/algos/allGatherRing.cc \
 							 ctran/algos/sendrecv.cc \
 							 ctran/algos/ctranAlgos.cc \
