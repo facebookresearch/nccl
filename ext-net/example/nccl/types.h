@@ -5,6 +5,7 @@
 #ifndef NCCL_ERR_H_
 #define NCCL_ERR_H_
 
+/* *INDENT-OFF* */
 /* Data types */
 typedef enum { ncclInt8       = 0, ncclChar       = 0,
                ncclUint8      = 1,
@@ -17,5 +18,6 @@ typedef enum { ncclInt8       = 0, ncclChar       = 0,
                ncclFloat64    = 8, ncclDouble     = 8,
                ncclBfloat16   = 9,
 } ncclDataType_t;
+/* *INDENT-ON* */
 
 #endif

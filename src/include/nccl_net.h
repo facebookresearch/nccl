@@ -21,6 +21,7 @@
 // Maximum number of requests per comm object
 #define NCCL_NET_MAX_REQUESTS 32
 
+/* *INDENT-OFF* */
 typedef struct {
   char* name;                      // Used mostly for logging.
   char* pciPath;                   // Path to the PCI device in /sys.
@@ -114,6 +115,7 @@ typedef struct {
   int maxComms;   // Maximum number of comms we can create
   int maxRecvs;   // Maximum number of grouped receives.
 } ncclNetProperties_v6_t;
+/* *INDENT-ON* */
 
 typedef struct {
   // Name of the network (mainly for logs)
