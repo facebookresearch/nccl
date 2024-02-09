@@ -308,10 +308,10 @@ Default: lazy
 NCCL_CTRAN_REGISTER_REPORT_SNAPSHOT_COUNT
 Description:
     Manages the frequency of register snapshot reporting. Set to -1 to
-    completely disable. Set to 0 to report only at communicator destroy time. Set to
-    N to allows a snapshot to be reported whenever once every N registrations. It
-    helps understand the performance impact of registeration at different period of
-    a long running job.
+    completely disable. Set to 0 to report only at communicator destroy time.
+    Set to N to allows a snapshot to be reported whenever once every N
+    registrations. It helps understand the performance impact of registeration
+    at different period of a long running job.
 Type: int
 Default: -1
 
