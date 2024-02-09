@@ -17,6 +17,7 @@
 #include <pthread.h>
 #include <pwd.h>
 #include "nccl_cvars.h"
+#include "tuner.h"
 
 const char* userHomeDir() {
   struct passwd *pwUser = getpwuid(getuid());
@@ -69,6 +70,23 @@ void initEnv() {
   }
   sprintf(confFilePath, "/etc/nccl.conf");
   setEnvFile(confFilePath);
+
+  // Load tuner plugin after set default config file and before ncclCvarInit
+  // to allow tuner plugin overwrite any environment variables if specified
+  // FIXME: the INFO log in ncclLoadTunerPlugin won't be printed out since CVARs are not initialized yet
+  ncclTuner_t *tuner;
+  ncclLoadTunerPlugin(&tuner);
+  if (tuner) {
+    // 0 indicates that the tuner is one-off (e.g., set global variables if a tuning file specified)
+    // and will not be associated with any communicator
+    // it should be destroyed immediately
+    tuner->init(0, 0, nullptr);
+    tuner->destroy();
+    // reset debug level to let NCCL initialize it properly later after ncclCvarInit
+    // FIXME: this is a temporary workaorund because ncclLoadTunerPlugin calls ncclDebugInit before ncclCvarInit below
+    ncclDebugLevel = -1;
+  }
+
   ncclCvarInit();
 
   __atomic_store_n(&isInitialized, true, __ATOMIC_RELEASE);

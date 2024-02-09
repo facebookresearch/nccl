@@ -3,12 +3,15 @@
 // This file is a mock implementation of the tuning plugin interface. It's used
 // to test the tuning plugin framework without having to build the real tuners.
 
+#include <stdlib.h>
 #include "nccl_tuner.h"
 
 __attribute__((visibility("hidden"))) static ncclResult_t ncclTuningMockInit(
     size_t nRanks,
     size_t nNodes,
     ncclDebugLogger_t logFunction) {
+  // set a dummy NCCL environment variable
+  setenv("NCCL_NET_PLUGIN", "mock", 1);
   return ncclSuccess;
 }
 __attribute__((visibility("hidden"))) static ncclResult_t
