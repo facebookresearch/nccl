@@ -601,6 +601,14 @@ ncclResult_t CtranMapper::searchRegHandle(
     }
   }
 
+  if (dynamicRegist) {
+    WARN(
+        "CTRAN-MAPPER: buffer %p len %ld is not pre-registered by user. "
+        "We have to one-time register it and deregister immediately after current collective, which may likely cause a performance slowdown.",
+        buf,
+        len);
+  }
+
 exit:
   return res;
 }
