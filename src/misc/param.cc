@@ -82,10 +82,10 @@ void initEnv() {
     // it should be destroyed immediately
     tuner->init(0, 0, nullptr);
     tuner->destroy();
-    // reset debug level to let NCCL initialize it properly later after ncclCvarInit
-    // FIXME: this is a temporary workaorund because ncclLoadTunerPlugin calls ncclDebugInit before ncclCvarInit below
-    ncclDebugLevel = -1;
   }
+  // reset debug level to let NCCL initialize it properly later after ncclCvarInit
+  // FIXME: this is a temporary workaorund because ncclLoadTunerPlugin calls ncclDebugInit before ncclCvarInit below
+  ncclDebugLevel = -1;
 
   ncclCvarInit();
 
