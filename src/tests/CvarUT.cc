@@ -2149,6 +2149,28 @@ TEST_F(CvarTest, NCCL_LOCAL_REGISTER_value_3) {
   EXPECT_EQ(NCCL_LOCAL_REGISTER, std::numeric_limits<int64_t>::min());
 }
 
+TEST_F(CvarTest, NCCL_LOGGER_MODE_single_choice_0) {
+  setenv("NCCL_LOGGER_MODE", "sync", 1);
+  ncclCvarInit();
+  EXPECT_EQ(NCCL_LOGGER_MODE, NCCL_LOGGER_MODE::sync);
+}
+
+TEST_F(CvarTest, NCCL_LOGGER_MODE_single_choice_1) {
+  setenv("NCCL_LOGGER_MODE", "async", 1);
+  ncclCvarInit();
+  EXPECT_EQ(NCCL_LOGGER_MODE, NCCL_LOGGER_MODE::async);
+}
+
+TEST_F(CvarTest, NCCL_LOGGER_MODE_default_choice) {
+  testDefaultValue("NCCL_LOGGER_MODE");
+  EXPECT_EQ(NCCL_LOGGER_MODE, NCCL_LOGGER_MODE::sync);
+}
+
+TEST_F(CvarTest, NCCL_LOGGER_MODE_warn_unknown_val) {
+  setenv("NCCL_LOGGER_MODE", "dummy", 1);
+  testWarn("NCCL_LOGGER_MODE", "Unknown value");
+}
+
 TEST_F(CvarTest, NCCL_MAX_CTAS_value_0) {
   testNumValue<int>("NCCL_MAX_CTAS", 0);
   EXPECT_EQ(NCCL_MAX_CTAS, 0);

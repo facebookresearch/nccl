@@ -301,6 +301,13 @@ extern int64_t NCCL_LL_BUFFSIZE_DEFAULT;
 extern int64_t NCCL_LOCAL_REGISTER;
 extern int64_t NCCL_LOCAL_REGISTER_DEFAULT;
 
+enum class NCCL_LOGGER_MODE {
+  sync,
+  async,
+};
+extern enum NCCL_LOGGER_MODE NCCL_LOGGER_MODE;
+extern enum NCCL_LOGGER_MODE NCCL_LOGGER_MODE_DEFAULT;
+
 extern int NCCL_MAX_CTAS;
 extern int NCCL_MAX_CTAS_DEFAULT;
 

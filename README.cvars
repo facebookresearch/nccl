@@ -691,6 +691,15 @@ Description:
 Type: int64_t
 Default: 0
 
+NCCL_LOGGER_MODE
+Description:
+    The way to log NCCL messages to stdout or specified by NCCL_DEBUG_FILE.
+    sync     - Log NCCL messages synchronously
+    async    - Log NCCL messages asynchronously via a background thread
+       (for NCCL messages logging file, see also NCCL_DEBUG_FILE)
+Type: enum
+Default: sync
+
 NCCL_MAX_CTAS
 Description:
     Set the maximal number of CTAs NCCL should use. Setting this
