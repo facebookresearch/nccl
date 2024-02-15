@@ -719,20 +719,20 @@ Description:
     number of CUDA blocks used for communication, hence the impact on
     GPU computing resources.  For more information:
     https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-max-nchannels
-Type: int64_t
+Type: int
 Default: -2
 
 NCCL_MAX_NRINGS
 Description:
     Deprecated version of NCCL_MAX_NCHANNELS. Please use
     NCCL_MAX_NCHANNELS instead.
-Type: int64_t
+Type: int
 Default: -2
 
 NCCL_MAX_P2P_NCHANNELS
 Description:
     Hidden variable. No description provided.
-Type: int64_t
+Type: int
 Default: MAX
 
 NCCL_MEM_SYNC_DOMAIN
@@ -763,20 +763,20 @@ Description:
     useful to improve performance; however, it uses more CUDA compute
     resources.  For more information:
     https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-min-nchannels
-Type: int64_t
+Type: int
 Default: -2
 
 NCCL_MIN_NRINGS
 Description:
     Deprecated version of NCCL_MIN_NCHANNELS. Please use
     NCCL_MIN_NCHANNELS instead.
-Type: int64_t
+Type: int
 Default: -2
 
 NCCL_MIN_P2P_NCHANNELS
 Description:
     Hidden variable. No description provided.
-Type: int64_t
+Type: int
 Default: 1
 
 NCCL_NCHANNELS_PER_NET_PEER

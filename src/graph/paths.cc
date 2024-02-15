@@ -70,13 +70,13 @@
      Hidden variable. No description provided.
 
  - name        : NCCL_MIN_P2P_NCHANNELS
-   type        : int64_t
+   type        : int
    default     : 1
    description : |-
      Hidden variable. No description provided.
 
  - name        : NCCL_MAX_P2P_NCHANNELS
-   type        : int64_t
+   type        : int
    default     : MAX
    description : |-
      Hidden variable. No description provided.

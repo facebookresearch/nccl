@@ -15,7 +15,7 @@
 === BEGIN_NCCL_CVAR_INFO_BLOCK ===
 
  - name        : NCCL_MIN_NCHANNELS
-   type        : int64_t
+   type        : int
    default     : -2
    description : |-
      The NCCL_MIN_NCHANNELS variable controls the minimum number of
@@ -26,7 +26,7 @@
      https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-min-nchannels
 
  - name        : NCCL_MAX_NCHANNELS
-   type        : int64_t
+   type        : int
    default     : -2
    description : |-
      The NCCL_MAX_NCHANNELS variable limits the number of channels
@@ -36,14 +36,14 @@
      https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-max-nchannels
 
  - name        : NCCL_MIN_NRINGS
-   type        : int64_t
+   type        : int
    default     : -2
    description : |-
      Deprecated version of NCCL_MIN_NCHANNELS. Please use
      NCCL_MIN_NCHANNELS instead.
 
  - name        : NCCL_MAX_NRINGS
-   type        : int64_t
+   type        : int
    default     : -2
    description : |-
      Deprecated version of NCCL_MAX_NCHANNELS. Please use
