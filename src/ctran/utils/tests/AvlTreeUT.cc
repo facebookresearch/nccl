@@ -33,9 +33,9 @@ class Range {
 class RangeRegistration {
  public:
   RangeRegistration(Range& range, void* val) {
-    addr = reinterpret_cast<void*>(range.addr);
-    len = range.len;
-    val = val;
+    this->addr = reinterpret_cast<void*>(range.addr);
+    this->len = range.len;
+    this->val = val;
   }
   ~RangeRegistration() = default;
 
