@@ -14,6 +14,10 @@
 
 #define NCCL_MIN_CHANNEL_SIZE (NCCL_LL_THREAD_THRESHOLD*64)
 #define NCCL_AGG_CHANNEL_SIZE_DEF (1LL << 21) /* 2 MiB, ideal per-channel size to fully utilize bandwidth */
+#define NCCL_LL_ALIGNMENT_PER_THREAD sizeof(uint64_t)
+#define NCCL_LL128_ALIGNMENT_PER_WARP 480
+#define NCCL_SIMPLE_ALIGNMENT (WARP_SIZE * 8LL * 16LL)
+#define NCCL_BYTES_ALIGNMENT 16
 
 ncclResult_t ncclInitKernelsForDevice(int cudaArch, size_t* maxStackSize);
 ncclResult_t ncclEnqueueCheck(struct ncclInfo* info);

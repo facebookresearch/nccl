@@ -12,9 +12,6 @@
 extern std::string CUDA_LAUNCH_BLOCKING;
 extern std::string CUDA_LAUNCH_BLOCKING_DEFAULT;
 
-extern int64_t NCCL_AGG_CHANNEL_SIZE;
-extern int64_t NCCL_AGG_CHANNEL_SIZE_DEFAULT;
-
 extern std::string NCCL_ALGO;
 extern std::string NCCL_ALGO_DEFAULT;
 
@@ -247,6 +244,9 @@ extern std::string NCCL_IB_HCA_PREFIX_DEFAULT;
 extern std::vector<std::string> NCCL_IB_HCA;
 extern std::vector<std::string> NCCL_IB_HCA_DEFAULT;
 
+extern int64_t NCCL_IB_MERGE_NICS;
+extern int64_t NCCL_IB_MERGE_NICS_DEFAULT;
+
 extern int64_t NCCL_IB_MERGE_VFS;
 extern int64_t NCCL_IB_MERGE_VFS_DEFAULT;
 
@@ -339,6 +339,9 @@ extern int NCCL_MIN_NRINGS_DEFAULT;
 extern int NCCL_MIN_P2P_NCHANNELS;
 extern int NCCL_MIN_P2P_NCHANNELS_DEFAULT;
 
+extern int64_t NCCL_MNNVL;
+extern int64_t NCCL_MNNVL_DEFAULT;
+
 extern int64_t NCCL_NCHANNELS_PER_NET_PEER;
 extern int64_t NCCL_NCHANNELS_PER_NET_PEER_DEFAULT;
 
@@ -380,6 +383,9 @@ extern int64_t NCCL_NVB_DISABLE_DEFAULT;
 
 extern int64_t NCCL_NVB_PRECONNECT;
 extern int64_t NCCL_NVB_PRECONNECT_DEFAULT;
+
+extern int64_t NCCL_NVLSTREE_MAX_CHUNKSIZE;
+extern int64_t NCCL_NVLSTREE_MAX_CHUNKSIZE_DEFAULT;
 
 extern int64_t NCCL_NVLS_ENABLE;
 extern int64_t NCCL_NVLS_ENABLE_DEFAULT;

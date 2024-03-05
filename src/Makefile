@@ -10,7 +10,7 @@ include ../makefiles/version.mk
 INCEXPORTS  := nccl.h nccl_net.h
 LIBSRCFILES := \
 	bootstrap.cc channel.cc collectives.cc debug.cc enqueue.cc group.cc \
-	init.cc init_nvtx.cc net.cc proxy.cc transport.cc \
+	init.cc init_nvtx.cc net.cc proxy.cc transport.cc register.cc \
 	$(wildcard graph/*.cc) \
 	$(wildcard misc/*.cc) \
 	$(wildcard transport/*.cc)
@@ -35,6 +35,7 @@ LIBSRCFILES += algorithms/AlgoDirector.cc \
                algorithms/allreduce/AlgoAllReduceDdaNvsTreeThreaded.cc \
                algorithms/allreduce/AlgoAllReduceDdaNvsScatGatIpc.cc \
                algorithms/allreduce/AlgoManagerAllReduce.cc
+LIBSRCFILES += window.cc
 
 INCLUDES := -Iinclude
 INCLUDES += -Ialgorithms -Ialgorithms/allreduce -Idevice
