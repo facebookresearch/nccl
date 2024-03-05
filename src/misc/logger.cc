@@ -1,7 +1,7 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "logger.h"
-// #include <folly/concurrency/UnboundedQueue.h>
+#include "nccl_cvars.h"
 
 #include <stdexcept>
 #include "nccl_cvars.h"
@@ -21,6 +21,30 @@
 
 === END_NCCL_CVAR_INFO_BLOCK ===
 */
+
+// Initialize static memeber for NcclLogger
+std::atomic_flag NcclLogger::singletonInitialized_ = ATOMIC_FLAG_INIT;
+std::unique_ptr<NcclLogger> NcclLogger::singleton_{};
+
+void NcclLogger::log(const std::string& msg, FILE* ncclDebugFile) noexcept {
+  // There are three cases where singleton_ is nullptr:
+  // 1. NCCL_LOGGER_MODE is not async.
+  // 2. NCCL_LOGGER_MODE is async but singleton_ haven't initialized.
+  // 3. We are exiting the program and singleton_ has already been destroyed.
+  // In all three cases, we should not init singleton and write to the file directly.
+  if (singleton_ != nullptr) {
+    singleton_->enqueueLog(msg);
+  } else {
+    fwrite(msg.c_str(), 1, msg.size(), ncclDebugFile);
+  }
+}
+
+void NcclLogger::init(FILE* ncclDebugFile) {
+  if (NCCL_LOGGER_MODE == NCCL_LOGGER_MODE::async &&
+        !singletonInitialized_.test_and_set()) {
+    singleton_ = std::unique_ptr<NcclLogger>(new NcclLogger(ncclDebugFile));
+  }
+}
 
 NcclLogger::NcclLogger(FILE* ncclDebugFile)
     : mergedMsgQueue_(new std::queue<std::string>()) {
@@ -57,15 +81,20 @@ NcclLogger::~NcclLogger() {
   }
 }
 
-void NcclLogger::log(const std::string& msg) {
-  if (NCCL_LOGGER_MODE == NCCL_LOGGER_MODE::sync) {
-    writeToFile(msg);
-  } else {
+void NcclLogger::enqueueLog(const std::string& msg) noexcept{
+  try {
     {
       std::lock_guard<std::mutex> lock(mutex_);
       mergedMsgQueue_->push(msg);
     }
     cv_.notify_one();
+  } catch (const std::exception& e) {
+    // Fixme: make the log conform with the NCCL log format by isolating
+    // the logic for formatting logs in debug.cc from the logic of logging
+    // logs. Otherwise we will be calling the logger again.
+    fprintf(debugFile, "NcclLogger: Encountered exception %s\n", e.what());
+  } catch (...) {
+    fprintf(debugFile, "NcclLogger: Encountered unknown exception\n");
   }
 }
 

@@ -79,31 +79,6 @@ TEST_F(CvarTest, CUDA_LAUNCH_BLOCKING_value_1) {
   EXPECT_EQ(CUDA_LAUNCH_BLOCKING, "val2_with_space");
 }
 
-TEST_F(CvarTest, NCCL_AGG_CHANNEL_SIZE_value_0) {
-  testNumValue<int64_t>("NCCL_AGG_CHANNEL_SIZE", 0);
-  EXPECT_EQ(NCCL_AGG_CHANNEL_SIZE, 0);
-}
-
-TEST_F(CvarTest, NCCL_AGG_CHANNEL_SIZE_value_1) {
-  testNumValue<int64_t>("NCCL_AGG_CHANNEL_SIZE", 9999);
-  EXPECT_EQ(NCCL_AGG_CHANNEL_SIZE, 9999);
-}
-
-TEST_F(CvarTest, NCCL_AGG_CHANNEL_SIZE_value_2) {
-  testNumValue<int64_t>("NCCL_AGG_CHANNEL_SIZE", std::numeric_limits<int64_t>::max());
-  EXPECT_EQ(NCCL_AGG_CHANNEL_SIZE, std::numeric_limits<int64_t>::max());
-}
-
-TEST_F(CvarTest, NCCL_AGG_CHANNEL_SIZE_value_3) {
-  testNumValue<int64_t>("NCCL_AGG_CHANNEL_SIZE", std::numeric_limits<int64_t>::min());
-  EXPECT_EQ(NCCL_AGG_CHANNEL_SIZE, std::numeric_limits<int64_t>::min());
-}
-
-TEST_F(CvarTest, NCCL_AGG_CHANNEL_SIZE_default_value) {
-  testDefaultValue("NCCL_AGG_CHANNEL_SIZE");
-  EXPECT_EQ(NCCL_AGG_CHANNEL_SIZE, -2);
-}
-
 TEST_F(CvarTest, NCCL_ALGO_value_0) {
   setenv("NCCL_ALGO", "val1", 1);
   ncclCvarInit();
@@ -1752,6 +1727,31 @@ TEST_F(CvarTest, NCCL_IB_HCA_prefix_2) {
   checkListValues<std::string>(vals, NCCL_IB_HCA);
 }
 
+TEST_F(CvarTest, NCCL_IB_MERGE_NICS_value_0) {
+  testNumValue<int64_t>("NCCL_IB_MERGE_NICS", 0);
+  EXPECT_EQ(NCCL_IB_MERGE_NICS, 0);
+}
+
+TEST_F(CvarTest, NCCL_IB_MERGE_NICS_value_1) {
+  testNumValue<int64_t>("NCCL_IB_MERGE_NICS", 9999);
+  EXPECT_EQ(NCCL_IB_MERGE_NICS, 9999);
+}
+
+TEST_F(CvarTest, NCCL_IB_MERGE_NICS_value_2) {
+  testNumValue<int64_t>("NCCL_IB_MERGE_NICS", std::numeric_limits<int64_t>::max());
+  EXPECT_EQ(NCCL_IB_MERGE_NICS, std::numeric_limits<int64_t>::max());
+}
+
+TEST_F(CvarTest, NCCL_IB_MERGE_NICS_value_3) {
+  testNumValue<int64_t>("NCCL_IB_MERGE_NICS", std::numeric_limits<int64_t>::min());
+  EXPECT_EQ(NCCL_IB_MERGE_NICS, std::numeric_limits<int64_t>::min());
+}
+
+TEST_F(CvarTest, NCCL_IB_MERGE_NICS_default_value) {
+  testDefaultValue("NCCL_IB_MERGE_NICS");
+  EXPECT_EQ(NCCL_IB_MERGE_NICS, 1);
+}
+
 TEST_F(CvarTest, NCCL_IB_MERGE_VFS_value_0) {
   testNumValue<int64_t>("NCCL_IB_MERGE_VFS", 0);
   EXPECT_EQ(NCCL_IB_MERGE_VFS, 0);
@@ -2393,6 +2393,31 @@ TEST_F(CvarTest, NCCL_MIN_P2P_NCHANNELS_default_value) {
   EXPECT_EQ(NCCL_MIN_P2P_NCHANNELS, 1);
 }
 
+TEST_F(CvarTest, NCCL_MNNVL_value_0) {
+  testNumValue<int64_t>("NCCL_MNNVL", 0);
+  EXPECT_EQ(NCCL_MNNVL, 0);
+}
+
+TEST_F(CvarTest, NCCL_MNNVL_value_1) {
+  testNumValue<int64_t>("NCCL_MNNVL", 9999);
+  EXPECT_EQ(NCCL_MNNVL, 9999);
+}
+
+TEST_F(CvarTest, NCCL_MNNVL_value_2) {
+  testNumValue<int64_t>("NCCL_MNNVL", std::numeric_limits<int64_t>::max());
+  EXPECT_EQ(NCCL_MNNVL, std::numeric_limits<int64_t>::max());
+}
+
+TEST_F(CvarTest, NCCL_MNNVL_value_3) {
+  testNumValue<int64_t>("NCCL_MNNVL", std::numeric_limits<int64_t>::min());
+  EXPECT_EQ(NCCL_MNNVL, std::numeric_limits<int64_t>::min());
+}
+
+TEST_F(CvarTest, NCCL_MNNVL_default_value) {
+  testDefaultValue("NCCL_MNNVL");
+  EXPECT_EQ(NCCL_MNNVL, -2);
+}
+
 TEST_F(CvarTest, NCCL_NCHANNELS_PER_NET_PEER_value_0) {
   testNumValue<int64_t>("NCCL_NCHANNELS_PER_NET_PEER", 0);
   EXPECT_EQ(NCCL_NCHANNELS_PER_NET_PEER, 0);
@@ -2415,7 +2440,7 @@ TEST_F(CvarTest, NCCL_NCHANNELS_PER_NET_PEER_value_3) {
 
 TEST_F(CvarTest, NCCL_NCHANNELS_PER_NET_PEER_default_value) {
   testDefaultValue("NCCL_NCHANNELS_PER_NET_PEER");
-  EXPECT_EQ(NCCL_NCHANNELS_PER_NET_PEER, 2);
+  EXPECT_EQ(NCCL_NCHANNELS_PER_NET_PEER, -1);
 }
 
 TEST_F(CvarTest, NCCL_NETWORK_value_0) {
@@ -2725,6 +2750,31 @@ TEST_F(CvarTest, NCCL_NVB_PRECONNECT_value_3) {
 TEST_F(CvarTest, NCCL_NVB_PRECONNECT_default_value) {
   testDefaultValue("NCCL_NVB_PRECONNECT");
   EXPECT_EQ(NCCL_NVB_PRECONNECT, 1);
+}
+
+TEST_F(CvarTest, NCCL_NVLSTREE_MAX_CHUNKSIZE_value_0) {
+  testNumValue<int64_t>("NCCL_NVLSTREE_MAX_CHUNKSIZE", 0);
+  EXPECT_EQ(NCCL_NVLSTREE_MAX_CHUNKSIZE, 0);
+}
+
+TEST_F(CvarTest, NCCL_NVLSTREE_MAX_CHUNKSIZE_value_1) {
+  testNumValue<int64_t>("NCCL_NVLSTREE_MAX_CHUNKSIZE", 9999);
+  EXPECT_EQ(NCCL_NVLSTREE_MAX_CHUNKSIZE, 9999);
+}
+
+TEST_F(CvarTest, NCCL_NVLSTREE_MAX_CHUNKSIZE_value_2) {
+  testNumValue<int64_t>("NCCL_NVLSTREE_MAX_CHUNKSIZE", std::numeric_limits<int64_t>::max());
+  EXPECT_EQ(NCCL_NVLSTREE_MAX_CHUNKSIZE, std::numeric_limits<int64_t>::max());
+}
+
+TEST_F(CvarTest, NCCL_NVLSTREE_MAX_CHUNKSIZE_value_3) {
+  testNumValue<int64_t>("NCCL_NVLSTREE_MAX_CHUNKSIZE", std::numeric_limits<int64_t>::min());
+  EXPECT_EQ(NCCL_NVLSTREE_MAX_CHUNKSIZE, std::numeric_limits<int64_t>::min());
+}
+
+TEST_F(CvarTest, NCCL_NVLSTREE_MAX_CHUNKSIZE_default_value) {
+  testDefaultValue("NCCL_NVLSTREE_MAX_CHUNKSIZE");
+  EXPECT_EQ(NCCL_NVLSTREE_MAX_CHUNKSIZE, -2);
 }
 
 TEST_F(CvarTest, NCCL_NVLS_ENABLE_value_0) {

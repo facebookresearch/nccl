@@ -37,6 +37,9 @@
 === END_NCCL_CVAR_INFO_BLOCK ===
 */
 
+// Handle type used for cuMemCreate()
+CUmemAllocationHandleType ncclCuMemHandleType = CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
+
 static int ncclCuMemSupported = 0;
 
 // Determine whether CUMEM & VMM RDMA is supported on this platform

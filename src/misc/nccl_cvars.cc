@@ -199,8 +199,6 @@ void ncclCvarInit() {
 // DO NOT EDIT!!!
 std::string CUDA_LAUNCH_BLOCKING;
 std::string CUDA_LAUNCH_BLOCKING_DEFAULT;
-int64_t NCCL_AGG_CHANNEL_SIZE;
-int64_t NCCL_AGG_CHANNEL_SIZE_DEFAULT;
 std::string NCCL_ALGO;
 std::string NCCL_ALGO_DEFAULT;
 enum NCCL_ALLGATHER_ALGO NCCL_ALLGATHER_ALGO;
@@ -335,6 +333,8 @@ std::string NCCL_IB_HCA_PREFIX;
 std::string NCCL_IB_HCA_PREFIX_DEFAULT;
 std::vector<std::string> NCCL_IB_HCA;
 std::vector<std::string> NCCL_IB_HCA_DEFAULT;
+int64_t NCCL_IB_MERGE_NICS;
+int64_t NCCL_IB_MERGE_NICS_DEFAULT;
 int64_t NCCL_IB_MERGE_VFS;
 int64_t NCCL_IB_MERGE_VFS_DEFAULT;
 int64_t NCCL_IB_PCI_RELAXED_ORDERING;
@@ -391,6 +391,8 @@ int NCCL_MIN_NRINGS;
 int NCCL_MIN_NRINGS_DEFAULT;
 int NCCL_MIN_P2P_NCHANNELS;
 int NCCL_MIN_P2P_NCHANNELS_DEFAULT;
+int64_t NCCL_MNNVL;
+int64_t NCCL_MNNVL_DEFAULT;
 int64_t NCCL_NCHANNELS_PER_NET_PEER;
 int64_t NCCL_NCHANNELS_PER_NET_PEER_DEFAULT;
 std::string NCCL_NETWORK;
@@ -419,6 +421,8 @@ int64_t NCCL_NVB_DISABLE;
 int64_t NCCL_NVB_DISABLE_DEFAULT;
 int64_t NCCL_NVB_PRECONNECT;
 int64_t NCCL_NVB_PRECONNECT_DEFAULT;
+int64_t NCCL_NVLSTREE_MAX_CHUNKSIZE;
+int64_t NCCL_NVLSTREE_MAX_CHUNKSIZE_DEFAULT;
 int64_t NCCL_NVLS_ENABLE;
 int64_t NCCL_NVLS_ENABLE_DEFAULT;
 int NCCL_NVLS_NCHANNELS;
@@ -496,7 +500,6 @@ int64_t NCCL_WORK_FIFO_DEPTH_DEFAULT;
 
 void initEnvSet(std::unordered_set<std::string>& env) {
   env.insert("CUDA_LAUNCH_BLOCKING");
-  env.insert("NCCL_AGG_CHANNEL_SIZE");
   env.insert("NCCL_ALGO");
   env.insert("NCCL_ALLGATHER_ALGO");
   env.insert("NCCL_ALLOC_P2P_NET_LL_BUFFERS");
@@ -563,6 +566,7 @@ void initEnvSet(std::unordered_set<std::string>& env) {
   env.insert("NCCL_IB_DISABLE");
   env.insert("NCCL_IB_GID_INDEX");
   env.insert("NCCL_IB_HCA");
+  env.insert("NCCL_IB_MERGE_NICS");
   env.insert("NCCL_IB_MERGE_VFS");
   env.insert("NCCL_IB_PCI_RELAXED_ORDERING");
   env.insert("NCCL_IB_PKEY");
@@ -591,6 +595,7 @@ void initEnvSet(std::unordered_set<std::string>& env) {
   env.insert("NCCL_MIN_NCHANNELS");
   env.insert("NCCL_MIN_NRINGS");
   env.insert("NCCL_MIN_P2P_NCHANNELS");
+  env.insert("NCCL_MNNVL");
   env.insert("NCCL_NCHANNELS_PER_NET_PEER");
   env.insert("NCCL_NET");
   env.insert("NCCL_NET_DISABLE_INTRA");
@@ -605,6 +610,7 @@ void initEnvSet(std::unordered_set<std::string>& env) {
   env.insert("NCCL_NTHREADS");
   env.insert("NCCL_NVB_DISABLE");
   env.insert("NCCL_NVB_PRECONNECT");
+  env.insert("NCCL_NVLSTREE_MAX_CHUNKSIZE");
   env.insert("NCCL_NVLS_ENABLE");
   env.insert("NCCL_NVLS_NCHANNELS");
   env.insert("NCCL_P2P_DIRECT_DISABLE");
@@ -647,9 +653,6 @@ void initEnvSet(std::unordered_set<std::string>& env) {
 void readCvarEnv() {
   CUDA_LAUNCH_BLOCKING = env2str("CUDA_LAUNCH_BLOCKING", "");
   CUDA_LAUNCH_BLOCKING_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "");
-
-  NCCL_AGG_CHANNEL_SIZE = env2num<int64_t>("NCCL_AGG_CHANNEL_SIZE", "-2");
-  NCCL_AGG_CHANNEL_SIZE_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "-2");
 
   NCCL_ALGO = env2str("NCCL_ALGO", "");
   NCCL_ALGO_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "");
@@ -941,6 +944,9 @@ void readCvarEnv() {
   NCCL_IB_HCA_DEFAULT.clear();
   std::tie(NCCL_IB_HCA_PREFIX_DEFAULT, NCCL_IB_HCA_DEFAULT) = env2prefixedStrlist("NCCL_ENV_DO_NOT_SET", "", NCCL_IB_HCA_allPrefixes);
 
+  NCCL_IB_MERGE_NICS = env2num<int64_t>("NCCL_IB_MERGE_NICS", "1");
+  NCCL_IB_MERGE_NICS_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "1");
+
   NCCL_IB_MERGE_VFS = env2num<int64_t>("NCCL_IB_MERGE_VFS", "1");
   NCCL_IB_MERGE_VFS_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "1");
 
@@ -1047,8 +1053,11 @@ void readCvarEnv() {
   NCCL_MIN_P2P_NCHANNELS = env2num<int>("NCCL_MIN_P2P_NCHANNELS", "1");
   NCCL_MIN_P2P_NCHANNELS_DEFAULT = env2num<int>("NCCL_ENV_DO_NOT_SET", "1");
 
-  NCCL_NCHANNELS_PER_NET_PEER = env2num<int64_t>("NCCL_NCHANNELS_PER_NET_PEER", "2");
-  NCCL_NCHANNELS_PER_NET_PEER_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "2");
+  NCCL_MNNVL = env2num<int64_t>("NCCL_MNNVL", "-2");
+  NCCL_MNNVL_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "-2");
+
+  NCCL_NCHANNELS_PER_NET_PEER = env2num<int64_t>("NCCL_NCHANNELS_PER_NET_PEER", "-1");
+  NCCL_NCHANNELS_PER_NET_PEER_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "-1");
 
   NCCL_NETWORK = env2str("NCCL_NET", "");
   NCCL_NETWORK_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "");
@@ -1088,6 +1097,9 @@ void readCvarEnv() {
 
   NCCL_NVB_PRECONNECT = env2num<int64_t>("NCCL_NVB_PRECONNECT", "1");
   NCCL_NVB_PRECONNECT_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "1");
+
+  NCCL_NVLSTREE_MAX_CHUNKSIZE = env2num<int64_t>("NCCL_NVLSTREE_MAX_CHUNKSIZE", "-2");
+  NCCL_NVLSTREE_MAX_CHUNKSIZE_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "-2");
 
   NCCL_NVLS_ENABLE = env2num<int64_t>("NCCL_NVLS_ENABLE", "2");
   NCCL_NVLS_ENABLE_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "2");

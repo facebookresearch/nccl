@@ -10,12 +10,6 @@ Description:
 Type: string
 Default: 
 
-NCCL_AGG_CHANNEL_SIZE
-Description:
-    Hidden variable. No description provided.
-Type: int64_t
-Default: -2
-
 NCCL_ALGO
 Description:
     The NCCL_ALGO variable defines which algorithms NCCL will use.
@@ -555,6 +549,12 @@ Description:
 Type: prefixed_stringlist
 Default: None
 
+NCCL_IB_MERGE_NICS
+Description:
+    Hidden variable. No description provided.
+Type: int64_t
+Default: 1
+
 NCCL_IB_MERGE_VFS
 Description:
     Hidden variable. No description provided.
@@ -779,11 +779,17 @@ Description:
 Type: int
 Default: 1
 
+NCCL_MNNVL
+Description:
+    Hidden variable. No description provided.
+Type: int64_t
+Default: -2
+
 NCCL_NCHANNELS_PER_NET_PEER
 Description:
     Hidden variable. No description provided.
 Type: int64_t
-Default: 2
+Default: -1
 
 NCCL_NET (internal variable within NCCL: NCCL_NETWORK)
 Description:
@@ -908,6 +914,12 @@ Description:
     Hidden variable. No description provided.
 Type: int64_t
 Default: 1
+
+NCCL_NVLSTREE_MAX_CHUNKSIZE
+Description:
+    Hidden variable. No description provided.
+Type: int64_t
+Default: -2
 
 NCCL_NVLS_ENABLE
 Description:

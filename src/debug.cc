@@ -241,13 +241,12 @@ void ncclDebugLog(ncclDebugLogLevel level, unsigned long flags, const char *file
     va_start(vargs, fmt);
     len += vsnprintf(buffer+len, sizeof(buffer)-len, fmt, vargs);
     va_end(vargs);
+    // vsnprintf may return len > sizeof(buffer) in the case of a truncated output.
+    // Rewind len so that we can replace the final \0 by \n
+    if (len > sizeof(buffer)) len = sizeof(buffer)-1;
     buffer[len++] = '\n';
 
-    if (NCCL_LOGGER_MODE == NCCL_LOGGER_MODE::sync) {
-      fwrite(buffer, 1, len, ncclDebugFile);
-    } else {
-      NcclLogger::getInstance(ncclDebugFile).log(std::string(buffer, len));
-    }
+    NcclLogger::log(std::string(buffer, len), ncclDebugFile);
   }
 }
 
