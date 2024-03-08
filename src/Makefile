@@ -36,6 +36,7 @@ LIBSRCFILES += algorithms/AlgoDirector.cc \
                algorithms/allreduce/AlgoAllReduceDdaNvsScatGatIpc.cc \
                algorithms/allreduce/AlgoManagerAllReduce.cc
 LIBSRCFILES += window.cc
+LIBSRCFILES += collectives/AllReduceSparseBlock.cc
 
 INCLUDES := -Iinclude
 INCLUDES += -Ialgorithms -Ialgorithms/allreduce -Idevice

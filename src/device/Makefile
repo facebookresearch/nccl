@@ -74,6 +74,7 @@ $(OBJDIR)/gensrc/rules.mk: $(OBJDIR)/gensrc ;
 
 SRCS = common.cu onerank.cu all_reduce_dda.cu
 SRCS += all_to_all_ctran.cu all_to_allv_ctran.cu
+SRCS += all_reduce_sparse_block.cu
 SRCS += ../ctran/gpe/CtranGpeKernel.cu
 
 LIB_OBJS = $(patsubst %, $(OBJDIR)/%.o, $(SRCS)) $(LIB_OBJS_GEN)

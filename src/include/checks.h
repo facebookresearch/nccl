@@ -181,6 +181,14 @@
   } \
 } while(0)
 
+#define NCCLARGCHECK(statement, ...) \
+  do {                               \
+    if (!(statement)) {              \
+      WARN(__VA_ARGS__);             \
+      return ncclInvalidArgument;    \
+    }                                \
+  } while (0);
+
 #define CUDACHECKTHREAD(a) do { \
   if ((a) != cudaSuccess) { \
     WARN("%s:%d -> %d [Async thread]", __FILE__, __LINE__, args->ret); \
