@@ -437,7 +437,7 @@ static ncclResult_t socketTryAccept(struct ncclSocket* sock) {
   sock->fd = accept(sock->acceptFd, &sock->addr.sa, &socklen);
   if (sock->fd != -1) {
     sock->state = ncclSocketStateAccepted;
-  } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+  } else if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
     WARN("socketTryAccept: Accept failed: %s", strerror(errno));
     return ncclSystemError;
   }
