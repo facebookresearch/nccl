@@ -1180,6 +1180,8 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
 
   // Topo detection / System graph creation
   NCCLCHECKGOTO(ncclTopoGetSystem(comm, &comm->topo), ret, fail);
+  // Cluster Topo detection
+  NCCLCHECKGOTO(ncclTopoGetCluster(comm, &comm->cluster), ret, fail);
   // Compute paths between GPUs and NICs
   NCCLCHECKGOTO(ncclTopoComputePaths(comm->topo, comm), ret, fail);
   // Remove inaccessible GPUs and unused NICs
@@ -1190,6 +1192,10 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
   NCCLCHECKGOTO(ncclTopoSearchInit(comm->topo), ret, fail);
   // Print final topology
   NCCLCHECKGOTO(ncclTopoPrint(comm->topo), ret, fail);
+  // Print final cluster topology
+  if (comm->cluster != nullptr) {
+    NCCLCHECKGOTO(ncclTopoClusterPrint(comm->cluster), ret, fail);
+  }
 
   // Set Affinity to a CPU local the our GPU, so that all memory we allocate
   // on the host is local.

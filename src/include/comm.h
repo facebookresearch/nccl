@@ -216,6 +216,7 @@ struct ncclComm {
   struct ncclChannel channels[MAXCHANNELS];
   struct ncclPeerInfo* peerInfo;
   struct ncclTopoSystem* topo;
+  struct ncclTopoCluster* cluster;
 
   ncclNet_t* ncclNet;
   ncclCollNet_t* ncclCollNet;

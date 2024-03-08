@@ -3599,6 +3599,23 @@ TEST_F(CvarTest, NCCL_TOPO_FILE_default_value) {
   EXPECT_EQ(NCCL_TOPO_FILE, "/var/run/nvidia-topologyd/virtualTopology.xml");
 }
 
+TEST_F(CvarTest, NCCL_TOPO_CLUSTER_FILE_value_0) {
+  setenv("NCCL_TOPO_CLUSTER_FILE", "val1", 1);
+  ncclCvarInit();
+  EXPECT_EQ(NCCL_TOPO_CLUSTER_FILE, "val1");
+}
+
+TEST_F(CvarTest, NCCL_TOPO_CLUSTER_FILE_value_1) {
+  setenv("NCCL_TOPO_CLUSTER_FILE", "  val2_with_space   ", 1);
+  ncclCvarInit();
+  EXPECT_EQ(NCCL_TOPO_CLUSTER_FILE, "val2_with_space");
+}
+
+TEST_F(CvarTest, NCCL_TOPO_CLUSTER_FILE_default_value) {
+  testDefaultValue("NCCL_TOPO_CLUSTER_FILE");
+  EXPECT_EQ(NCCL_TOPO_CLUSTER_FILE, "/var/run/nvidia-topologyd/cluster.xml");
+}
+
 TEST_F(CvarTest, NCCL_TUNER_PLUGIN_value_0) {
   setenv("NCCL_TUNER_PLUGIN", "val1", 1);
   ncclCvarInit();
