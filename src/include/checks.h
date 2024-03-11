@@ -120,7 +120,7 @@
   ncclResult_t RES = call; \
   if (RES != ncclSuccess && RES != ncclInProgress) { \
     /* Print the back trace*/ \
-    if (ncclDebugNoWarn == 0) WARN("%s:%d -> %d", __FILE__, __LINE__, RES);    \
+    if (ncclDebugNoWarn == 0) WARN("%s:%d -> %d (%s)", __FILE__, __LINE__, RES, ncclGetErrorString(RES));    \
     return RES; \
   } \
 } while (0);
@@ -129,7 +129,7 @@
   RES = call; \
   if (RES != ncclSuccess && RES != ncclInProgress) { \
     /* Print the back trace*/ \
-    if (ncclDebugNoWarn == 0) WARN("%s:%d -> %d", __FILE__, __LINE__, RES);    \
+    if (ncclDebugNoWarn == 0) WARN("%s:%d -> %d (%s)", __FILE__, __LINE__, RES, ncclGetErrorString(RES));    \
     goto label; \
   } \
 } while (0);
@@ -139,7 +139,7 @@
   do {                                                        \
     ncclResult_t RES = call;                                  \
     if (RES != ncclSuccess && RES != ncclInProgress) {        \
-      WARN("%s:%d -> %d", __FILE__, __LINE__, RES); \
+      WARN("%s:%d -> %d (%s)", __FILE__, __LINE__, RES, ncclGetErrorString(RES)); \
     }                                                         \
   } while (0)
 
@@ -149,7 +149,7 @@
   do {                                                 \
     ncclResult_t RES = call;                           \
     if (RES != ncclSuccess && RES != ncclInProgress) { \
-      WARN("%s:%d -> %d", __FILE__, __LINE__, RES);    \
+      WARN("%s:%d -> %d (%s)", __FILE__, __LINE__, RES, ncclGetErrorString(RES));    \
       abort();                                         \
     }                                                  \
   } while (0)
@@ -158,7 +158,7 @@
   volatile uint32_t* tmpAbortFlag = (abortFlagPtr);     \
   ncclResult_t RES = call;                \
   if (RES != ncclSuccess && RES != ncclInProgress) {               \
-    if (ncclDebugNoWarn == 0) WARN("%s:%d -> %d", __FILE__, __LINE__, RES);    \
+    if (ncclDebugNoWarn == 0) WARN("%s:%d -> %d (%s)", __FILE__, __LINE__, RES, ncclGetErrorString(RES));    \
     return ncclInternalError;             \
   }                                       \
   if (tmpAbortFlag) NEQCHECK(*tmpAbortFlag, 0); \
@@ -168,7 +168,7 @@
   volatile uint32_t* tmpAbortFlag = (abortFlagPtr);             \
   RES = call;                             \
   if (RES != ncclSuccess && RES != ncclInProgress) {               \
-    if (ncclDebugNoWarn == 0) WARN("%s:%d -> %d", __FILE__, __LINE__, RES);    \
+    if (ncclDebugNoWarn == 0) WARN("%s:%d -> %d (%s)", __FILE__, __LINE__, RES, ncclGetErrorString(RES));    \
     goto label;                           \
   }                                       \
   if (tmpAbortFlag) NEQCHECKGOTO(*tmpAbortFlag, 0, RES, label); \
