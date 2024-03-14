@@ -208,7 +208,14 @@ ncclResult_t ncclTopoGetCluster(struct ncclComm* comm, struct ncclTopoCluster** 
     bool found = false;
     NCCLCHECK(ncclCalloc(&xml, 1));
     INFO(NCCL_ENV, "NCCL_TOPO_CLUSTER_FILE set by environment to %s", NCCL_TOPO_CLUSTER_FILE.c_str());
-    NCCLCHECKGOTO(ncclTopoClusterGetXmlFromFile(NCCL_TOPO_CLUSTER_FILE.data(), xml, 1, &found), res, cleanup);
+    NCCLCHECKGOTO(
+        ncclTopoClusterGetXmlFromFile(
+            NCCL_TOPO_CLUSTER_FILE.data(),
+            xml,
+            (NCCL_TOPO_CLUSTER_FILE != NCCL_TOPO_CLUSTER_FILE_DEFAULT),
+            &found),
+        res,
+        cleanup);
     if (found) {
       NCCLCHECKGOTO(ncclTopoGetClusterFromXml(xml, cluster), res, cleanup);
     }
