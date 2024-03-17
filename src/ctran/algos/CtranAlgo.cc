@@ -150,8 +150,8 @@ CtranAlgo::SharedResource::SharedResource(ncclComm* comm) {
     void* statePtr_d =
         (char*)this->devShmPtr_ + pos * sizeof(CtranAlgoDeviceBufState);
     struct CtranAlgoDeviceBufState stateInitialVal;
-    for (int i = 0; i < CTRAN_ALGO_MAX_THREAD_BLOCKS; i++) {
-      stateInitialVal.stepOnSameBlockIdx[i] = CTRAN_ALGO_STEP_RESET;
+    for (int j = 0; j < CTRAN_ALGO_MAX_THREAD_BLOCKS; j++) {
+      stateInitialVal.stepOnSameBlockIdx[j] = CTRAN_ALGO_STEP_RESET;
     }
     CUDACHECKTHROW(cudaMemcpy(
         statePtr_d,
