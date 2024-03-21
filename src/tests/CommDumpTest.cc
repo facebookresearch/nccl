@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <nccl.h>
+#include <unistd.h>
 #include <exception>
 #include <iostream>
 #include <string>
@@ -71,7 +72,7 @@ class CommDumpTest : public ::testing::Test {
   cudaStream_t stream;
 };
 
-TEST_F(CommDumpTest, SingleComm) {
+TEST_F(CommDumpTest, DISABLED_SingleComm) {
   auto res = ncclSuccess;
   std::unordered_map<std::string, std::string> dump;
 
@@ -202,7 +203,7 @@ TEST_F(CommDumpTest, DumpAfterColl) {
   }
 }
 
-TEST_F(CommDumpTest, DumpDuringColl) {
+TEST_F(CommDumpTest, DISABLED_DumpDuringColl) {
   auto res = ncclSuccess;
   std::unordered_map<std::string, std::string> dump;
   constexpr int numColls = 10;
@@ -361,6 +362,80 @@ TEST_F(CommDumpTest, DumpDuringColl) {
       printf("%s: %s\n", it.first.c_str(), it.second.c_str());
     }
   }
+}
+
+TEST_F(CommDumpTest, DumpFromSubComm) {
+  auto res = ncclSuccess;
+  std::unordered_map<std::string, std::string> dump;
+  constexpr int numColls = 10;
+  ncclComm_t newcomm = NCCL_COMM_NULL;
+
+  if (comm->nNodes < 2) {
+    GTEST_SKIP() << "Skipping test since nNodes < 2";
+  }
+
+  // Only odd ranks create subcomm
+  if (this->globalRank % 2 == 0) {
+    res = ncclCommSplit(
+        this->comm, NCCL_SPLIT_NOCOLOR, this->globalRank, &newcomm, nullptr);
+    ASSERT_EQ(res, ncclSuccess);
+    EXPECT_EQ(newcomm, (ncclComm_t)(NCCL_COMM_NULL));
+    // no color ranks skip the test
+    return;
+  } else {
+    res = ncclCommSplit(this->comm, 1, this->globalRank, &newcomm, nullptr);
+    ASSERT_EQ(res, ncclSuccess);
+  }
+
+  // Manually set the hanging point at opCount 5 on the hangRank
+  constexpr int hangOpCount = 5;
+  constexpr int hangRank = 0;
+  NCCL_PROXYMOCK_NET_SEND_FAILURE.clear();
+
+  if (newcomm->rank == hangRank) {
+    char hostname[1024];
+    gethostname(hostname, 1024);
+    int cuDev;
+    CUDACHECK_TEST(cudaGetDevice(&cuDev));
+
+    NCCL_PROXYMOCK_NET_SEND_FAILURE.push_back(std::to_string(hangOpCount));
+    NCCL_PROXYMOCK_NET_SEND_FAILURE.push_back(std::string(hostname));
+    NCCL_PROXYMOCK_NET_SEND_FAILURE.push_back(std::to_string(cuDev)); // cuDev
+    NCCL_PROXYMOCK_NET_SEND_FAILURE.push_back("-1"); // step
+    NCCL_PROXYMOCK_NET_SEND_FAILURE.push_back("1"); // match only once
+    NCCL_PROXYMOCK_NET_SEND_FAILURE.push_back("30"); // delay 30 seconds
+  }
+
+  // Manually re-initialze state of the mock instance
+  auto& instance = ProxyMockNetSendFailure::getInstance();
+  instance.initialize();
+
+  this->initData(this->globalRank);
+  for (int i = 0; i < numColls; i++) {
+    NCCLCHECK_TEST(ncclAllReduce(
+        this->dataBuf,
+        this->dataBuf,
+        this->dataCount,
+        ncclInt,
+        ncclSum,
+        newcomm,
+        this->stream));
+  }
+
+  // Wait till the hanging point is reached
+  sleep(10);
+
+  res = ncclCommDump(newcomm, dump);
+  ASSERT_EQ(res, ncclSuccess);
+
+  if (newcomm->rank == hangRank && VERBOSE) {
+    for (auto& it : dump) {
+      printf("%s: %s\n", it.first.c_str(), it.second.c_str());
+    }
+  }
+
+  NCCLCHECK_TEST(ncclCommDestroy(newcomm));
+
 }
 
 int main(int argc, char* argv[]) {

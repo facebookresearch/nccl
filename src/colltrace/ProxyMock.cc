@@ -10,6 +10,8 @@
 #include "checks.h"
 #include "comm.h"
 #include "nccl.h"
+#include "NetInternal.h"
+
 
 /*
 === BEGIN_NCCL_CVAR_INFO_BLOCK ===
@@ -18,8 +20,8 @@
    default     :
    description : |-
      Backdoor to mock a send failure in proxy thread following the format of
-     "<opCount>,<rank>,<remoteRank>,<step>,<num_match>,<delay_sec>".
-     Set any of <opCount>,<rank>,<remoteRank>,<step> to -1 to match any.
+     "<opCount>,<hostname>,<cuDev>,<step>,<num_match>,<delay_sec>".
+     Set any of <opCount>,<hostname>,<cuDev>,<step> to -1 to match any.
      Set <delay_sec> to 0 to always skip this send as a network failure,
      otherwise delay it in seconds to mock slow network.
      Set <num_match> to control how many times to match the send failure.
@@ -33,13 +35,13 @@
 */
 
 static std::vector<std::string> netSendFailureKeys =
-    {"opCount", "rank", "remoteRank", "step", "numMatch", "delaySec"};
+    {"opCount", "hostName", "cuDev", "step", "numMatch", "delaySec"};
 
 std::string ProxyMockNetSendFailure::serialize(bool quoted) {
   std::unordered_map<std::string, std::string> map;
   map["opCount"] = std::to_string(opCount_);
-  map["rank"] = std::to_string(rank_);
-  map["remoteRank"] = std::to_string(remoteRank_);
+  map["hostName"] = hostName_;
+  map["cuDev"] = std::to_string(cuDev_);
   map["step"] = std::to_string(step_);
   map["numMatch"] = std::to_string(numMatch_);
   map["delaySec"] = std::to_string(delaySec_);
@@ -63,11 +65,16 @@ void ProxyMockNetSendFailure::initialize() {
   // Enable mock only when all required fields are set
   if (NCCL_PROXYMOCK_NET_SEND_FAILURE.size() == netSendFailureKeys.size()) {
     opCount_ = std::stoi(NCCL_PROXYMOCK_NET_SEND_FAILURE[0]);
-    rank_ = std::stoi(NCCL_PROXYMOCK_NET_SEND_FAILURE[1]);
-    remoteRank_ = std::stoi(NCCL_PROXYMOCK_NET_SEND_FAILURE[2]);
+    hostName_ = NCCL_PROXYMOCK_NET_SEND_FAILURE[1];
+    cuDev_ = std::stoi(NCCL_PROXYMOCK_NET_SEND_FAILURE[2]);
     step_ = std::stoi(NCCL_PROXYMOCK_NET_SEND_FAILURE[3]);
     numMatch_ = std::stoi(NCCL_PROXYMOCK_NET_SEND_FAILURE[4]);
     delaySec_ = std::stoi(NCCL_PROXYMOCK_NET_SEND_FAILURE[5]);
+
+    char hostname[1024];
+    gethostname(hostname, 1024);
+    myHostName_ = std::string(hostname);
+    CUDACHECKIGNORE(cudaGetDevice(&myCuDev_));
 
     enabled_ = true;
     std::string configStr = serialize();
@@ -91,9 +98,10 @@ bool ProxyMockNetSendFailure::mockImpl(
 
   if ((opCount_ == PROXYMOCK_MATCH_ANY ||
        sub->traceArgs.collInfo.opCount == opCount_) &&
-      (rank_ == PROXYMOCK_MATCH_ANY || sub->traceArgs.rank == rank_) &&
-      (remoteRank_ == PROXYMOCK_MATCH_ANY ||
-       sub->traceArgs.remoteRank == remoteRank_) &&
+      (hostName_ == std::to_string(PROXYMOCK_MATCH_ANY) ||
+        hostName_ == myHostName_) &&
+      (cuDev_ == PROXYMOCK_MATCH_ANY ||
+       cuDev_ == myCuDev_) &&
       (step_ == PROXYMOCK_MATCH_ANY || currStep >= step_)) {
     std::string mockConfigStr = this->serialize();
 

@@ -97,8 +97,8 @@ class ProxyMockNetSendFailure {
 
   bool enabled_{false};
   uint64_t opCount_{0};
-  int rank_{0};
-  int remoteRank_{0};
+  std::string hostName_;
+  int cuDev_{0};
   int step_{0};
   int numMatch_{0};
   int delaySec_{0};
@@ -108,6 +108,9 @@ class ProxyMockNetSendFailure {
       std::chrono::time_point<std::chrono::high_resolution_clock>>
       mockStartMap_;
   int numMatched_{0};
+
+  std::string myHostName_;
+  int myCuDev_{0};
 };
 
 #endif
