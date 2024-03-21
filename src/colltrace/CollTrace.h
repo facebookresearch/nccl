@@ -35,7 +35,11 @@ struct CollTraceColl {
   ncclInfo info;
   int64_t iteration;
   cudaStream_t stream;
-  float latency {-1};
+  float latency{-1};
+  // This is achieved by waiting for the start event. We can only guarantee
+  // before this time point kernel has already started, but we cannot guarantee
+  // kernel started exactly at this time point.
+  std::chrono::time_point<std::chrono::high_resolution_clock> startTs{};
 
   // serialize the entry to a json format string
   std::string serialize(bool quoted = false);
@@ -76,13 +80,12 @@ class CollTrace {
 
   enum class CurrentCollState {
     PENDING,
+    WAIT_START,
     IN_PROGRESS,
     DONE,
   };
 
   struct Dump {
-    // Fixme: use a dedicated class to keep the information of collectives
-    // instead of reusing CollTraceColl and CollTraceEvent
     std::deque<CollTraceColl> pastColls;
     std::deque<CollTraceColl> pendingColls;
     std::unique_ptr<CollTraceColl> currentColl;

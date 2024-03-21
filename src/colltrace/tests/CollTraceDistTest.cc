@@ -14,9 +14,11 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <string_view>
 #include <rfe/scubadata/ScubaData.h>
 #include "Ctran.h"
 #include "checks.h"
+#include "gmock/gmock.h"
 #include "json/json.h"
 #include "nccl_cvars.h"
 #include "tests_common.cuh"
@@ -305,9 +307,60 @@ TEST_F(CollTraceTest, DumpWithUnfinished) {
   auto dump = comm->collTrace->dump();
 
   EXPECT_TRUE(dump.pastColls.size() >= nColl);
-  // +1 for the extra wakeup event that might be created by dump() function
   EXPECT_TRUE(dump.pendingColls.size() <= nColl);
+  int hasPending = dump.currentColl == nullptr ? 0 : 1;
+  EXPECT_TRUE(dump.pendingColls.size() + dump.pendingColls.size() == nColl * 2 - hasPending);
+  for (auto& coll: dump.pastColls) {
+    EXPECT_GT(coll.startTs.time_since_epoch().count(), 0);
+  }
+  for (auto& coll: dump.pendingColls) {
+    EXPECT_EQ(coll.startTs.time_since_epoch().count(), 0);
+  }
+  NCCLCHECK_TEST(ncclCommDestroy(comm));
 
+  NCCL_COLLTRACE.clear();
+}
+
+TEST_F(CollTraceTest, TestSerializedDump) {
+  // overwrite CollTrace features before creating comm
+  NCCL_COLLTRACE.push_back("trace");
+  ncclComm_t comm =
+      createNcclComm(this->globalRank, this->numRanks, this->localRank);
+  const int count = 1048576;
+  const int nColl = 10;
+
+  prepareAllreduce(count);
+  for (int i = 0; i < nColl; i++) {
+    NCCLCHECK_TEST(
+        ncclAllReduce(sendBuf, recvBuf, count, ncclInt, ncclSum, comm, stream));
+  }
+
+  EXPECT_TRUE(comm->collTrace != nullptr);
+  comm->collTrace->waitForWorkerFinishQueue();
+
+  // schedule more after the first 10 coll are finished
+  for (int i = 0; i < nColl; i++) {
+    NCCLCHECK_TEST(
+        ncclAllReduce(sendBuf, recvBuf, count, ncclInt, ncclSum, comm, stream));
+  }
+
+  auto dump = comm->collTrace->dump();
+
+  EXPECT_TRUE(dump.pastColls.size() >= nColl);
+  EXPECT_TRUE(dump.pendingColls.size() <= nColl);
+  int hasPending = dump.currentColl == nullptr ? 0 : 1;
+  EXPECT_TRUE(dump.pendingColls.size() + dump.pendingColls.size() == nColl * 2 - hasPending);
+  constexpr std::string_view startTsStr = "\"startTs\": ";
+  for (auto& coll: dump.pastColls) {
+    auto serialized = coll.serialize(true);
+    EXPECT_THAT(serialized, testing::HasSubstr(startTsStr));
+    EXPECT_GT(coll.startTs.time_since_epoch().count(), 0);
+  }
+  for (auto& coll: dump.pendingColls) {
+    auto serialized = coll.serialize(true);
+    EXPECT_THAT(serialized, testing::HasSubstr(startTsStr));
+    EXPECT_EQ(coll.startTs.time_since_epoch().count(), 0);
+  }
   NCCLCHECK_TEST(ncclCommDestroy(comm));
 
   NCCL_COLLTRACE.clear();
