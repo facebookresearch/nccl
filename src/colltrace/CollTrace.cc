@@ -1,22 +1,22 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "CollTrace.h"
+#include "ExtChecks.h"
 #include "FbInternal.h"
 #include "bootstrap.h"
 #include "comm.h"
 #include "nccl.h"
-#include "ExtChecks.h"
 
-#include "ExtUtils.h"
+#include <unistd.h>
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
+#include <fstream>
 #include <memory>
 #include <mutex>
-#include <string>
-#include <unistd.h>
-#include <chrono>
-#include <fstream>
 #include <sstream>
+#include <string>
+#include "ExtUtils.h"
 
 /*
 === BEGIN_NCCL_CVAR_INFO_BLOCK ===
@@ -124,8 +124,7 @@ CollTrace::~CollTrace() {
         comm_->commHash,
         comm_->rank,
         e.what());
-  }
-  catch(...) {
+  } catch (...) {
     WARN(
         "COLLTRACE: comm %p commHash %lx rank %d - Destroy FAILED: Unkown exception",
         comm_,
@@ -174,7 +173,8 @@ CollTrace::Dump CollTrace::dump() {
   std::lock_guard<std::mutex> lock(workerMutex_);
   CollTrace::Dump dump{};
 
-  if (curCollState_ == CurrentCollState::IN_PROGRESS) {
+  if (curCollState_ == CurrentCollState::IN_PROGRESS ||
+      curCollState_ == CurrentCollState::WAIT_START) {
     // copy contents
     dump.currentColl =
         std::unique_ptr<CollTraceColl>(new CollTraceColl(curEvent_->coll));
@@ -234,13 +234,20 @@ void* CollTrace::collTraceThreadFnImpl() {
     } else if (curEvent_->eventType == CollTraceEvent::EventType::WAKE_UP) {
       continue;
     }
+    curCollState_ = CurrentCollState::WAIT_START;
+    cudaError_t res = cudaEventSynchronize(curEvent_->start.get());
+    {
+      std::lock_guard<std::mutex> lock(workerMutex_);
+      curEvent_->coll.startTs = std::chrono::high_resolution_clock::now();
+    }
     curCollState_ = CurrentCollState::IN_PROGRESS;
-    cudaError_t res = cudaEventSynchronize(curEvent_->stop.get());
+    res = cudaEventSynchronize(curEvent_->stop.get());
     curCollState_ = CurrentCollState::DONE;
     float latency = -1;
 
     if (res == cudaSuccess) {
-      res = cudaEventElapsedTime(&latency, curEvent_->start.get(), curEvent_->stop.get());
+      res = cudaEventElapsedTime(
+          &latency, curEvent_->start.get(), curEvent_->stop.get());
     }
 
     {
@@ -271,8 +278,7 @@ void* CollTrace::collTraceThreadFnImpl() {
     // FIXME: we should revisit bootstrapAllGather() here since commAbort
     // may be called either on local rank or a remote rank causing socket
     // failure
-    if (comm_->tuner != NULL &&
-        features & CollTrace::Features::ONLINE_TUNING) {
+    if (comm_->tuner != NULL && features & CollTrace::Features::ONLINE_TUNING) {
       // Online tuning - average latencies across ranks & send to tuner
       float* latencies = NULL;
       NCCLCHECKIGNORE(
@@ -356,7 +362,9 @@ bool CollTrace::logCollSample(CollTraceColl& coll) {
   intMap["nChannels"] = coll.info.nChannels;
   intMap["nThreads"] = coll.info.nThreads;
   intMap["latency (microseconds)"] = 1000 * coll.latency;
-
+  intMap["startTs"] = std::chrono::duration_cast<std::chrono::microseconds>(
+                          coll.startTs.time_since_epoch())
+                          .count();
   ncclFbLogSample("nccl_coll_trace", normalMap, intMap);
   return true;
 }
@@ -376,7 +384,8 @@ static std::vector<std::string> collKeys = {
     "channelId",
     "nChannels",
     "nThreads",
-    "latencyUs"};
+    "latencyUs",
+    "startTs"};
 
 std::unordered_map<std::string, std::string> CollTraceColl::retrieveMap(
     bool quoted) {
@@ -406,7 +415,11 @@ std::unordered_map<std::string, std::string> CollTraceColl::retrieveMap(
   infoMap["channelId"] = std::to_string(info.channelId);
   infoMap["nChannels"] = std::to_string(info.nChannels);
   infoMap["nThreads"] = std::to_string(info.nThreads);
-  infoMap["latencyUs"] = std::to_string(latency < 0 ? -1: latency * 1000);
+  infoMap["latencyUs"] = std::to_string(latency < 0 ? -1 : latency * 1000);
+  infoMap["startTs"] =
+      std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(
+                          startTs.time_since_epoch())
+                          .count());
   return infoMap;
 }
 
@@ -442,7 +455,7 @@ ncclResult_t collTraceDestroy(ncclComm* comm) {
     comm->collTrace.reset();
   }
   // Try catch clause here is not going to be useful as destructors are noexcept
-  // by default. Instead of throwing an exception it will just crash the program.
-  // We need to think about a better way to handle this.
+  // by default. Instead of throwing an exception it will just crash the
+  // program. We need to think about a better way to handle this.
   return ncclSuccess;
 }
