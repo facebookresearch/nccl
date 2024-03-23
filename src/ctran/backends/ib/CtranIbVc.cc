@@ -100,7 +100,7 @@ CtranIb::Impl::VirtualConn::VirtualConn(
   }
 
   for (int i = 0; i < NCCL_CTRAN_IB_MAX_QPS; i++) {
-    std::deque<uint64_t> q;
+    std::deque<uint32_t> q;
     this->notifications_.push_back(q);
   }
   return;
@@ -382,22 +382,19 @@ ncclResult_t CtranIb::Impl::VirtualConn::postPutMsg(const void *sbuf, void *dbuf
       wr.next = nullptr;
       wr.sg_list = &sg;
       wr.num_sge = 1;
+      wr.opcode = IBV_WR_RDMA_WRITE;
+      wr.send_flags = 0;
 
-      if (len > this->maxMsgSize_) {
-        wr.opcode = IBV_WR_RDMA_WRITE;
-        wr.send_flags = 0;
-      } else {
+      // last packet of this QP
+      if (len <= toSend) {
+        // if remoteNotify is set, notify remote rank number of QPs to check
         if (notify == true) {
           wr.opcode = IBV_WR_RDMA_WRITE_WITH_IMM;
-          wr.imm_data = len_;
-        } else {
-          wr.opcode = IBV_WR_RDMA_WRITE;
+          wr.imm_data = numQps;
         }
-
+        // if localNotify is set, signal local rank with CQE
         if (localNotify == true) {
           wr.send_flags = IBV_SEND_SIGNALED;
-        } else {
-          wr.send_flags = 0;
         }
       }
       wr.wr.rdma.remote_addr = reinterpret_cast<uint64_t>(dbuf) + offset;
@@ -605,15 +602,8 @@ exit:
 bool CtranIb::Impl::VirtualConn::checkNotify() {
   bool notify = false;
   if (!this->notifications_[0].empty()) {
-    // Always get message size from first QP
-    uint64_t msgSz = this->notifications_[0].front();
-
-    // Calculate number of QPs used in the data transfer
-    int numQps = (msgSz / NCCL_CTRAN_IB_QP_SCALING_THRESHOLD) +
-      !!(msgSz % NCCL_CTRAN_IB_QP_SCALING_THRESHOLD);
-    if (numQps > NCCL_CTRAN_IB_MAX_QPS) {
-      numQps = NCCL_CTRAN_IB_MAX_QPS;
-    }
+    // Always get numQps from first QP
+    auto numQps = this->notifications_[0].front();
 
     // Return true only when received notification from all QPs
     notify = true;

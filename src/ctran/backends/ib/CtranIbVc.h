@@ -112,7 +112,8 @@ class CtranIb::Impl::VirtualConn {
     uint32_t maxMsgSize_{0};
     uint8_t linkLayer_{0};
     std::mutex m_;
-    std::vector<std::deque<uint64_t>> notifications_;
+    // notification is based imm_data field in ibv_send_wr which is uint32_t
+    std::vector<std::deque<uint32_t>> notifications_;
     std::unordered_map<int,int> qpNumToIdx_;
 };
 
