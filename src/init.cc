@@ -316,6 +316,8 @@ static ncclResult_t ncclInit() {
     __atomic_store_n(&initialized, true, __ATOMIC_RELEASE);
   }
   pthread_mutex_unlock(&initLock);
+  WARN("BDBG: NCCL changes are in.. AG slice step = %d, protocol = %s, max_channels=%d", ALLGATHER_SLICESTEPS, NCCL_PROTO.c_str(), MAXCHANNELS);
+  INFO(NCCL_INIT, "BDBG: NCCL changes are in.. AG slice step = %d, protocol = %s, max_channels=%d", ALLGATHER_SLICESTEPS, NCCL_PROTO.c_str(), MAXCHANNELS);
   return ncclSuccess;
 }
 
