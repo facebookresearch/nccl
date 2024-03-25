@@ -46,6 +46,15 @@
 
 #define CTRAN_HARDCODED_MAX_QPS (128)
 
+static inline int getQpNum(size_t nbytes) {
+  int numQps = (nbytes / NCCL_CTRAN_IB_QP_SCALING_THRESHOLD) +
+      !!(nbytes % NCCL_CTRAN_IB_QP_SCALING_THRESHOLD);
+  if (numQps > NCCL_CTRAN_IB_MAX_QPS) {
+    numQps = NCCL_CTRAN_IB_MAX_QPS;
+  }
+  return numQps;
+}
+
 // Business card describing the local IB connection info.
 struct BusCard {
   enum ibv_mtu mtu;
@@ -347,15 +356,8 @@ exit:
 }
 
 ncclResult_t CtranIb::Impl::VirtualConn::postPutMsg(const void *sbuf, void *dbuf, std::size_t len_,
-    uint32_t lkey, uint32_t rkey, bool localNotify, bool notify) {
+    uint32_t lkey, uint32_t rkey, int numQps, bool localNotify, bool notify) {
   ncclResult_t res = ncclSuccess;
-
-  int numQps = (len_ / NCCL_CTRAN_IB_QP_SCALING_THRESHOLD) +
-    !!(len_ % NCCL_CTRAN_IB_QP_SCALING_THRESHOLD);
-  if (numQps > NCCL_CTRAN_IB_MAX_QPS) {
-    numQps = NCCL_CTRAN_IB_MAX_QPS;
-  }
-
   uint64_t offset = 0;
 
   CtranIbSingleton& s = CtranIbSingleton::getInstance();
@@ -570,20 +572,15 @@ ncclResult_t CtranIb::Impl::VirtualConn::iput(const void *sbuf, void *dbuf, std:
   smr = reinterpret_cast<struct ibv_mr *>(ibRegElem);
   if (smr == nullptr) {
     WARN("CTRAN-IB: memory registration not found for addr %p", sbuf);
-    res = ncclSystemError;
-    goto exit;
+    return ncclSystemError;
   }
 
   rkey = remoteAccessKey.rkey;
+  // QP scaling
+  int numQps = getQpNum(len);
 
   bool localNotify;
   if (req != nullptr) {
-    int numQps = (len / NCCL_CTRAN_IB_QP_SCALING_THRESHOLD) +
-      !!(len % NCCL_CTRAN_IB_QP_SCALING_THRESHOLD);
-    if (numQps > NCCL_CTRAN_IB_MAX_QPS) {
-      numQps = NCCL_CTRAN_IB_MAX_QPS;
-    }
-
     localNotify = true;
     req->setRefCount(numQps);
     for (int i = 0; i < numQps; i++) {
@@ -593,17 +590,22 @@ ncclResult_t CtranIb::Impl::VirtualConn::iput(const void *sbuf, void *dbuf, std:
     localNotify = false;
   }
 
-  NCCLCHECKGOTO(this->postPutMsg(sbuf, dbuf, len, smr->lkey, rkey, localNotify, notify), res, exit);
+  NCCLCHECK(this->postPutMsg(sbuf, dbuf, len, smr->lkey, rkey, numQps, localNotify, notify));
 
-exit:
-  return res;
+  return ncclSuccess;
 }
 
-bool CtranIb::Impl::VirtualConn::checkNotify() {
+ncclResult_t CtranIb::Impl::VirtualConn::checkNotify(bool *notify_) {
   bool notify = false;
   if (!this->notifications_[0].empty()) {
     // Always get numQps from first QP
     auto numQps = this->notifications_[0].front();
+
+    // Check if numQps is valid in case network transfer is corrupted
+    if (numQps <= 0 || numQps > NCCL_CTRAN_IB_MAX_QPS) {
+      WARN("CTRAN-IB: Invalid numQps %d encoded in remote put", numQps);
+      return ncclSystemError;
+    }
 
     // Return true only when received notification from all QPs
     notify = true;
@@ -623,5 +625,6 @@ bool CtranIb::Impl::VirtualConn::checkNotify() {
     }
   }
 
-  return notify;
+  *notify_ = notify;
+  return ncclSuccess;
 }

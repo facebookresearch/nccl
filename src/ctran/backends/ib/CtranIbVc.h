@@ -65,9 +65,10 @@ class CtranIb::Impl::VirtualConn {
     ncclResult_t processCqe(enum ibv_wc_opcode opcode, int qpNum, uint32_t immData);
 
     // Implementation to check the notification associated with a remote put.
-    // It will return true if the notification is received, which indicates the
-    // completion of the remote put.
-    bool checkNotify();
+    // It will set notify to true if the notification is received, which
+    // indicates the completion of the remote put. ncclSystemError can be
+    // returned if notification encoded in remote put is invalid.
+    ncclResult_t checkNotify(bool* notify);
 
     // Global rank of remote peer.
     int peerRank;
@@ -77,7 +78,7 @@ class CtranIb::Impl::VirtualConn {
     ncclResult_t postRecvCtrlMsg(struct ControlMsg *cmsg);
     ncclResult_t postSendCtrlMsg(struct ControlMsg *cmsg);
     ncclResult_t postPutMsg(const void *sbuf, void *dbuf, std::size_t len,
-        uint32_t lkey, uint32_t rkey, bool localNotify, bool notify);
+        uint32_t lkey, uint32_t rkey, int numQps, bool localNotify, bool notify);
     ncclResult_t postRecvNotifyMsg(int idx);
 
     struct ibv_qp *controlQp_{nullptr};

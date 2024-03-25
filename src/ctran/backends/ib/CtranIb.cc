@@ -627,19 +627,18 @@ exit:
 }
 
 ncclResult_t CtranIb::checkNotify(int peerRank, bool* notify) {
-  ncclResult_t res = ncclSuccess;
-
-  NCCLCHECKGOTO(this->progress(), res, exit);
-  *notify = this->pimpl_->vcList[peerRank]->checkNotify();
-
-exit:
-  return res;
+  NCCLCHECK(this->progress());
+  NCCLCHECK(this->pimpl_->vcList[peerRank]->checkNotify(notify));
+  return ncclSuccess;
 }
 
 ncclResult_t CtranIb::waitNotify(int peerRank) {
   ncclResult_t res = ncclSuccess;
-  while (!this->pimpl_->vcList[peerRank]->checkNotify()) {
+  bool notify = false;
+  while (!notify) {
     NCCLCHECKGOTO(this->progress(), res, exit);
+    NCCLCHECKGOTO(
+        this->pimpl_->vcList[peerRank]->checkNotify(&notify), res, exit);
   }
 
 exit:
