@@ -4,13 +4,16 @@
  * See LICENSE.txt for license information
  ************************************************************************/
 
-#include "socket.h"
-#include "utils.h"
 #include <stdlib.h>
-
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <net/if.h>
+#include <array>
+#include <cstring>
+#include <mutex>
+
+#include "socket.h"
+#include "utils.h"
 #include "param.h"
 #include "nccl_cvars.h"
 
@@ -56,7 +59,8 @@ static ncclResult_t socketProgressOpt(int op, struct ncclSocket* sock, void* ptr
     }
     if (bytes == -1) {
       if (errno != EINTR && errno != EWOULDBLOCK && errno != EAGAIN) {
-        WARN("socketProgressOpt: Call to recv from %s failed : %s", ncclSocketToString(&sock->addr, line), strerror(errno));
+        const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&sock->addr)];
+        WARN("socketProgressOpt: Call to recv from %s(%s) failed : %s", ncclSocketToString(&sock->addr, line), hostname.c_str(), strerror(errno));
         return ncclRemoteError;
       } else {
         bytes = 0;
@@ -75,8 +79,9 @@ static ncclResult_t socketProgress(int op, struct ncclSocket* sock, void* ptr, i
   int closed;
   NCCLCHECK(socketProgressOpt(op, sock, ptr, size, offset, 0 /*block*/, &closed));
   if (closed) {
+    const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&sock->addr)];
     char line[SOCKET_NAME_MAXLEN+1];
-    WARN("socketProgress: Connection closed by remote peer %s", ncclSocketToString(&sock->addr, line, 0));
+    WARN("socketProgress: Connection closed by remote peer %s(%s)", ncclSocketToString(&sock->addr, line, 0), hostname.c_str());
     return ncclRemoteError;
   }
   return ncclSuccess;
@@ -104,6 +109,14 @@ const char *ncclSocketToString(union ncclSocketAddress *addr, char *buf, const i
   (void) getnameinfo(saddr, sizeof(union ncclSocketAddress), host, NI_MAXHOST, service, NI_MAXSERV, flag);
   sprintf(buf, "%s<%s>", host, service);
   return buf;
+}
+
+std::string ncclSocketToIPv6String(union ncclSocketAddress *addr) {
+  struct sockaddr *saddr = &addr->sa;
+  char host[NI_MAXHOST], service[NI_MAXSERV];
+  int flag = NI_NUMERICSERV | NI_NUMERICHOST;
+  (void) getnameinfo(saddr, sizeof(union ncclSocketAddress), host, NI_MAXHOST, service, NI_MAXSERV, flag);
+  return {host};
 }
 
 static uint16_t socketToPort(union ncclSocketAddress *addr) {
@@ -177,6 +190,10 @@ static int findInterfaces(const char* prefixList, char* names, union ncclSocketA
       strncpy(names+found*maxIfNameSize, interface->ifa_name, maxIfNameSize);
       // Store the IP address
       int salen = (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+
+      char addrStr[1024];
+      ncclSocketToString((union ncclSocketAddress *)interface->ifa_addr, addrStr, 1024);
+      WARN("Found interface %s:%s", interface->ifa_name, addrStr);
       memcpy(addrs+found, interface->ifa_addr, salen);
       found++;
     }
@@ -263,7 +280,8 @@ int ncclFindInterfaceMatchSubnet(char* ifNames, union ncclSocketAddress* localAd
   }
 
   if (found == 0) {
-    WARN("Net : No interface found in the same subnet as remote address %s", ncclSocketToString(remoteAddr, line_a));
+    const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(remoteAddr)];
+    WARN("Net : No interface found in the same subnet as remote address %s(%s)", ncclSocketToString(remoteAddr, line_a), hostname.c_str());
   }
   freeifaddrs(interfaces);
   return found;
@@ -473,6 +491,11 @@ static ncclResult_t socketFinalizeAccept(struct ncclSocket* sock) {
     } else {
       sock->state = ncclSocketStateReady;
     }
+    received = 0;
+    char hostname[kMaxHostNameLen + 1];
+    NCCLCHECK(socketWait(NCCL_SOCKET_RECV, sock, hostname, kMaxHostNameLen+1, &received));
+    std::unique_lock<std::mutex> lock{socketMapMutex};
+    socketIPv6ToHostname[ncclSocketToIPv6String(&sock->addr)] = std::string{hostname};
   }
   return ncclSuccess;
 }
@@ -507,7 +530,8 @@ static ncclResult_t socketStartConnect(struct ncclSocket* sock) {
   } else {
     char line[SOCKET_NAME_MAXLEN+1];
     sock->state = ncclSocketStateError;
-    WARN("socketStartConnect: Connect to %s failed : %s", ncclSocketToString(&sock->addr, line), strerror(errno));
+    const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&sock->addr)];
+    WARN("socketStartConnect: Connect to %s(%s) failed : %s", ncclSocketToString(&sock->addr, line), hostname.c_str(), strerror(errno));
     return ncclSystemError;
   }
 }
@@ -576,6 +600,10 @@ static ncclResult_t socketFinalizeConnect(struct ncclSocket* sock) {
   NCCLCHECK(socketWait(NCCL_SOCKET_SEND, sock, &sock->magic, sizeof(sock->magic), &sent));
   sent = 0;
   NCCLCHECK(socketWait(NCCL_SOCKET_SEND, sock, &sock->type, sizeof(sock->type), &sent));
+  sent = 0;
+  char hostname[kMaxHostNameLen + 1];
+  gethostname(hostname, kMaxHostNameLen + 1);
+  NCCLCHECK(socketWait(NCCL_SOCKET_SEND, sock, hostname, kMaxHostNameLen + 1, &sent));
   sock->state = ncclSocketStateReady;
   return ncclSuccess;
 }
@@ -737,8 +765,9 @@ ncclResult_t ncclSocketInit(struct ncclSocket* sock, union ncclSocketAddress* ad
     family = sock->addr.sa.sa_family;
     if (family != AF_INET && family != AF_INET6) {
       char line[SOCKET_NAME_MAXLEN+1];
-      WARN("ncclSocketInit: connecting to address %s with family %d is neither AF_INET(%d) nor AF_INET6(%d)",
-          ncclSocketToString(&sock->addr, line), family, AF_INET, AF_INET6);
+      const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&sock->addr)];
+      WARN("ncclSocketInit: connecting to address %s(%s) with family %d is neither AF_INET(%d) nor AF_INET6(%d)",
+          ncclSocketToString(&sock->addr, line), hostname.c_str(), family, AF_INET, AF_INET6);
       ret = ncclInternalError;
       goto fail;
     }

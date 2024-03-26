@@ -16,6 +16,20 @@ struct ncclBootstrapHandle {
 };
 static_assert(sizeof(struct ncclBootstrapHandle) <= sizeof(ncclUniqueId), "Bootstrap handle is too large to fit inside NCCL unique ID");
 
+struct bootstrapState {
+  struct ncclSocket listenSock;
+  struct ncclSocket ringRecvSocket;
+  struct ncclSocket ringSendSocket;
+  union ncclSocketAddress* peerCommAddresses;
+  union ncclSocketAddress* peerProxyAddresses;
+  struct unexConn* unexpectedConnections;
+  int cudaDev;
+  int rank;
+  int nranks;
+  uint64_t magic;
+  volatile uint32_t *abortFlag;
+};
+
 ncclResult_t bootstrapNetInit();
 ncclResult_t bootstrapCreateRoot(struct ncclBootstrapHandle* handle, bool idFromEnv);
 ncclResult_t bootstrapGetUniqueId(struct ncclBootstrapHandle* handle);

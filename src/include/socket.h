@@ -23,6 +23,8 @@
 #define SOCKET_NAME_MAXLEN (NI_MAXHOST+NI_MAXSERV)
 #define NCCL_SOCKET_MAGIC 0x564ab9f2fc4b9d6cULL
 
+constexpr auto kMaxHostNameLen = 127; // Extra byte for NUL
+
 /* Common socket address storage structure for IPv4/IPv6 */
 union ncclSocketAddress {
   struct sockaddr sa;
@@ -66,6 +68,7 @@ struct ncclSocket {
   enum ncclSocketType type;
 };
 
+std::string ncclSocketToIPv6String(union ncclSocketAddress *addr);
 const char *ncclSocketToString(union ncclSocketAddress *addr, char *buf, const int numericHostForm = 1);
 ncclResult_t ncclSocketGetAddrFromString(union ncclSocketAddress* ua, const char* ip_port_pair);
 int ncclFindInterfaceMatchSubnet(char* ifNames, union ncclSocketAddress* localAddrs, union ncclSocketAddress* remoteAddr, int ifNameMaxSize, int maxIfs);

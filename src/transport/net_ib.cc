@@ -613,8 +613,9 @@ ncclResult_t ncclIbInit(ncclDebugLogger_t logFunction) {
       }
       line[1023] = '\0';
       char addrline[SOCKET_NAME_MAXLEN+1];
-      INFO(NCCL_INIT|NCCL_NET, "NET/IB : Using%s %s; OOB %s:%s", line, ncclIbRelaxedOrderingEnabled ? "[RO]" : "",
-           ncclIbIfName, ncclSocketToString(&ncclIbIfAddr, addrline));
+      const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&ncclIbIfAddr)];
+      INFO(NCCL_INIT|NCCL_NET, "NET/IB : Using%s %s; OOB %s:%s(%s)", line, ncclIbRelaxedOrderingEnabled ? "[RO]" : "",
+           ncclIbIfName, ncclSocketToString(&ncclIbIfAddr, addrline), hostname.c_str());
     }
     pthread_mutex_unlock(&ncclIbLock);
   }
@@ -1427,16 +1428,18 @@ ncclResult_t ncclIbIsend(void* sendComm, void* data, int size, int tag, void* mh
       char line[SOCKET_NAME_MAXLEN + 1];
       union ncclSocketAddress addr;
       ncclSocketGetAddr(&comm->sock, &addr);
-      WARN("NET/IB : req %d/%d tag %x peer %s collective mismatch error, local size %d remote size %d",
-        r, nreqs, tag, ncclSocketToString(&addr, line), size, slots[r].size);
+      const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&ncclIbIfAddr)];
+      WARN("NET/IB : req %d/%d tag %x peer %s(%s) collective mismatch error, local size %d remote size %d",
+        r, nreqs, tag, ncclSocketToString(&addr, line), hostname.c_str(), size, slots[r].size);
       return ncclInvalidUsage;
     } // plus any potential programming errors
     else if (slots[r].size < 0 || slots[r].addr == 0 || slots[r].rkey == 0) {
       char line[SOCKET_NAME_MAXLEN + 1];
       union ncclSocketAddress addr;
       ncclSocketGetAddr(&comm->sock, &addr);
-      WARN("NET/IB : req %d/%d tag %x peer %s posted incorrect receive info: size %d addr %lx rkey %x",
-        r, nreqs, tag, ncclSocketToString(&addr, line), slots[r].size, slots[r].addr, slots[r].rkey);
+      const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&addr)];
+      WARN("NET/IB : req %d/%d tag %x peer %s(%s) posted incorrect receive info: size %d addr %lx rkey %x",
+        r, nreqs, tag, ncclSocketToString(&addr, line), hostname.c_str(), slots[r].size, slots[r].addr, slots[r].rkey);
       return ncclInternalError;
     }
     struct ncclIbRequest* req;
@@ -1641,11 +1644,12 @@ ncclResult_t ncclIbTest(void* request, int* done, int* sizes) {
             localGidStr = inet_ntop(AF_INET6, &r->gidInfo->localGid, localGidString, sizeof(localGidString));
             remoteGidStr = inet_ntop(AF_INET6, &r->gidInfo->remoteGid, remoteGidString, sizeof(remoteGidString));
         }
-        WARN("NET/IB : Got completion from peer %s with error %d, opcode %d, len %d, vendor err %d (%s)%s%s%s%s",
-            ncclSocketToString(&addr, line), wc->status, wc->opcode, wc->byte_len, wc->vendor_err, reqTypeStr[r->type],
+        const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&addr)];
+        WARN("NET/IB : Got completion from peer %s(%s) with error %d, opcode %d, len %d, vendor err %d (%s)%s%s%s%s",
+            ncclSocketToString(&addr, line), hostname.c_str(), wc->status, wc->opcode, wc->byte_len, wc->vendor_err, reqTypeStr[r->type],
             localGidStr ?  " localGid ":"", localGidString, remoteGidStr ? " remoteGid ":"", remoteGidString);
         return ncclRemoteError;
-      }
+            }
 
       struct ncclIbRequest* req = r->verbs->reqs+(wc->wr_id & 0xff);
       if (req->type == NCCL_NET_IB_REQ_SEND) {

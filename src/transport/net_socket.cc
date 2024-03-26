@@ -506,9 +506,10 @@ ncclResult_t ncclNetSocketTest(void* request, int* done, int* size) {
       char line[SOCKET_NAME_MAXLEN+1];
       union ncclSocketAddress addr;
       ncclSocketGetAddr(r->ctrlSock, &addr);
-      WARN("NET/Socket : peer %s message truncated : receiving %d bytes instead of %d. If you believe your socket network is in healthy state, \
+      const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&addr)];
+      WARN("NET/Socket : peer %s(%s) message truncated : receiving %d bytes instead of %d. If you believe your socket network is in healthy state, \
           there may be a mismatch in collective sizes or environment settings (e.g. NCCL_PROTO, NCCL_ALGO) between ranks",
-          ncclSocketToString(&addr, line), data, r->size);
+          ncclSocketToString(&addr, line), hostname.c_str(), data, r->size);
       return ncclInvalidUsage;
     }
     r->size = data;
