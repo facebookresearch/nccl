@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <mutex>
 #include "param.h"
 #include "nccl_cvars.h"
 #include "AlgoInit.h"
@@ -705,6 +706,9 @@ static ncclResult_t fillInfo(struct ncclComm* comm, struct ncclPeerInfo* info, u
   info->hostHash=getHostHash()+commHash;
   info->pidHash=getPidHash()+commHash;
 
+  gethostname(info->hostname, kMaxHostNameLen + 1);
+  info->pid = getpid();
+
   // Get the device MAJOR:MINOR of /dev/shm so we can use that
   // information to decide whether we can use SHM for inter-process
   // communication in a container environment
@@ -1025,6 +1029,17 @@ fail:
 // MNNVL: Flag to indicate whether to enable Multi-Node NVLink
 NCCL_PARAM(MNNVL, "MNNVL", -2);
 
+static void addPeerInfoToGlobal(struct ncclComm* comm) {
+  std::unique_lock<std::mutex> socketLock{socketMapMutex};
+  for (int i = 0; i < comm->nRanks; i++) {
+    auto state = static_cast<struct bootstrapState*>(comm->bootstrap);
+    std::string commSocketStr = ncclSocketToIPv6String(&state->peerCommAddresses[i]);
+    socketIPv6ToHostname.emplace(std::move(commSocketStr), comm->peerInfo[i].hostname);
+    std::string proxySocketStr = ncclSocketToIPv6String(&state->peerProxyAddresses[i]);
+    socketIPv6ToHostname.emplace(std::move(proxySocketStr), comm->peerInfo[i].hostname);
+  }
+}
+
 static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* parent = NULL) {
   // We use 2 AllGathers
   // 1. { peerInfo, comm, compCap}
@@ -1069,6 +1084,8 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
   NCCLCHECKGOTO(ncclCalloc(&comm->peerInfo, nranks+1), ret, fail); // Extra rank to represent CollNet root
   NCCLCHECKGOTO(fillInfo(comm, comm->peerInfo+rank, comm->commHash), ret, fail);
   NCCLCHECKGOTO(bootstrapAllGather(comm->bootstrap, comm->peerInfo, sizeof(struct ncclPeerInfo)), ret, fail);
+
+  addPeerInfoToGlobal(comm);
 
   for (int i = 0; i < nranks; i++) {
     if ((i != rank) && (comm->peerInfo[i].hostHash == comm->peerInfo[rank].hostHash) && (comm->peerInfo[i].busId == comm->peerInfo[rank].busId)) {

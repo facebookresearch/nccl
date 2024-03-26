@@ -218,21 +218,6 @@ struct unexConn {
   struct unexConn* next;
 };
 
-struct bootstrapState {
-  struct ncclSocket listenSock;
-  struct ncclSocket ringRecvSocket;
-  struct ncclSocket ringSendSocket;
-  union ncclSocketAddress* peerCommAddresses;
-  union ncclSocketAddress* peerProxyAddresses;
-  uint64_t* peerProxyAddressesUDS;
-  struct unexConn* unexpectedConnections;
-  int cudaDev;
-  int rank;
-  int nranks;
-  uint64_t magic;
-  volatile uint32_t *abortFlag;
-};
-
 ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* comm) {
   int rank = comm->rank;
   int nranks = comm->nRanks;

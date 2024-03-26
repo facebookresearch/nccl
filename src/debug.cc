@@ -64,6 +64,8 @@
 === END_NCCL_CVAR_INFO_BLOCK ===
 */
 
+std::mutex socketMapMutex{};
+std::unordered_map<std::string, std::string> socketIPv6ToHostname{};
 int ncclDebugLevel = -1;
 static int pid = -1;
 static char hostname[1024];

@@ -11,7 +11,9 @@
 #include "nccl_common.h"
 #include <stdio.h>
 #include <chrono>
+#include <mutex>
 #include <type_traits>
+#include <vector>
 
 #include <limits.h>
 #include <string.h>
@@ -19,9 +21,13 @@
 
 #include <sstream>
 #include <iomanip>
+#include <unordered_map>
 
 // Conform to pthread and NVTX standard
 #define NCCL_THREAD_NAMELEN 16
+
+extern std::mutex socketMapMutex;
+extern std::unordered_map<std::string, std::string> socketIPv6ToHostname;
 
 extern int ncclDebugLevel;
 extern uint64_t ncclDebugMask;

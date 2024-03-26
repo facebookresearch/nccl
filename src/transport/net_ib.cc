@@ -450,8 +450,9 @@ ncclResult_t ncclIbInit(ncclDebugLogger_t logFunction) {
       }
       line[2047] = '\0';
       char addrline[SOCKET_NAME_MAXLEN+1];
-      INFO(NCCL_INIT|NCCL_NET, "NET/IB : Using%s %s; OOB %s:%s", line, ncclIbRelaxedOrderingEnabled ? "[RO]" : "",
-           ncclIbIfName, ncclSocketToString(&ncclIbIfAddr, addrline));
+      const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&ncclIbIfAddr)];
+      INFO(NCCL_INIT|NCCL_NET, "NET/IB : Using%s %s; OOB %s:%s(%s)", line, ncclIbRelaxedOrderingEnabled ? "[RO]" : "",
+           ncclIbIfName, ncclSocketToString(&ncclIbIfAddr, addrline), hostname.c_str());
     }
     pthread_mutex_unlock(&ncclIbLock);
   }
@@ -1547,8 +1548,9 @@ ncclResult_t ncclIbIsend(void* sendComm, void* data, int size, int tag, void* mh
       char line[SOCKET_NAME_MAXLEN + 1];
       union ncclSocketAddress addr;
       ncclSocketGetAddr(&comm->base.sock, &addr);
-      WARN("NET/IB : req %d/%d tag %x peer %s posted incorrect receive info: size %d addr %lx rkeys[0]=%x",
-        r, nreqs, tag, ncclSocketToString(&addr, line), slots[r].size, slots[r].addr, slots[r].rkeys[0]);
+      const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&addr)];
+      WARN("NET/IB : req %d/%d tag %x peer %s(%s) posted incorrect receive info: size %d addr %lx rkeys[0]=%x",
+        r, nreqs, tag, ncclSocketToString(&addr, line), hostname.c_str(), slots[r].size, slots[r].addr, slots[r].rkeys[0]);
       return ncclInternalError;
     }
     struct ncclIbRequest* req;
@@ -1806,8 +1808,9 @@ ncclResult_t ncclIbTest(void* request, int* done, int* sizes) {
             }
 
             char line[SOCKET_NAME_MAXLEN+1];
-            WARN("NET/IB : Got completion from peer %s with status=%d opcode=%d len=%d vendor err %d (%s)%s%s%s%s",
-                ncclSocketToString(&addr, line), wc->status, wc->opcode, wc->byte_len, wc->vendor_err, reqTypeStr[r->type],
+            const std::string& hostname = socketIPv6ToHostname[ncclSocketToIPv6String(&ncclIbIfAddr)];
+            WARN("NET/IB : Got completion from peer %s(%s) with status=%d opcode=%d len=%d vendor err %d (%s)%s%s%s%s",
+                ncclSocketToString(&addr, line), hostname.c_str(), wc->status, wc->opcode, wc->byte_len, wc->vendor_err, reqTypeStr[r->type],
                 localGidStr ?  " localGid ":"", localGidString, remoteGidStr ? " remoteGids":"", remoteGidString);
             return ncclRemoteError;
           }
