@@ -78,7 +78,7 @@ static inline ncclResult_t wrap_ibv_post_send(struct ibv_qp *qp, struct ibv_send
   NTRACE_PROFILING_RECORD(IbvPostSend, qp, wr, (const struct ibv_send_wr **)bad_wr, NULL);
   int ret = qp->context->ops.post_send(qp, wr, bad_wr); /*returns 0 on success, or the value of errno on failure (which indicates the failure reason)*/
   if (ret != IBV_SUCCESS) {
-    WARN("ibv_post_send() failed with error %s, Bad WR %p, First WR %p", strerror(ret), wr, *bad_wr);
+    WARN("ibv_post_send() failed with error %s on device %s, Bad WR %p, First WR %p", strerror(ret), qp->context->device->name, wr, *bad_wr);
     return ncclSystemError;
   }
   return ncclSuccess;
@@ -88,7 +88,7 @@ static inline ncclResult_t wrap_ibv_post_recv(struct ibv_qp *qp, struct ibv_recv
   NTRACE_PROFILING_RECORD(IbvPostRecv, qp, wr, (const struct ibv_recv_wr **)bad_wr, NULL);
   int ret = qp->context->ops.post_recv(qp, wr, bad_wr); /*returns 0 on success, or the value of errno on failure (which indicates the failure reason)*/
   if (ret != IBV_SUCCESS) {
-    WARN("ibv_post_recv() failed with error %s", strerror(ret));
+    WARN("ibv_post_recv() failed with error %s on device %s", strerror(ret), qp->context->device->name);
     return ncclSystemError;
   }
   return ncclSuccess;
