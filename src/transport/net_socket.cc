@@ -228,6 +228,7 @@ void* persistentSocketThread(void *args_) {
   struct ncclNetSocketComm* comm = resource->comm;
   struct ncclNetSocketTaskQueue* myQueue = &resource->threadTaskQueue;
   int nSocksPerThread = comm->nSocks / comm->nThreads;
+  NCCL_NAMED_THREAD_START("PersistSocket");
   while (1) {
     int idle = 1;
     int mark = myQueue->next; // mark newest task seen

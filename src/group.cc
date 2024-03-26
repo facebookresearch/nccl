@@ -58,6 +58,7 @@ ncclResult_t ncclAsyncLaunch(
 }
 
 void* ncclAsyncJobMain(void* arg) {
+  NCCL_NAMED_THREAD_START("AsyncJob");
   struct ncclAsyncJob* job = (struct ncclAsyncJob*)arg;
   job->result = job->func(job);
   if (job->result != ncclSuccess) {
