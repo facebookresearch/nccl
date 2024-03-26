@@ -873,6 +873,7 @@ static int setProxyThreadContext(struct ncclProxyState* proxyState) {
 
 void* ncclProxyProgress(void *proxyState_) {
   struct ncclProxyState* proxyState = (struct ncclProxyState*)proxyState_;
+  NCCL_NAMED_THREAD_START("Proxy");
   if (setProxyThreadContext(proxyState)) {
     INFO(NCCL_INIT, "[Proxy Progress] Created CUDA context on device %d", proxyState->cudaDev);
   } else if (cudaSetDevice(proxyState->cudaDev) != cudaSuccess) {
@@ -1446,6 +1447,7 @@ static bool proxyMatchOpType(int type) {
 }
 
 void* ncclProxyService(void* _args) {
+  NCCL_NAMED_THREAD_START("Service");
   nProxyComms++;
   struct ncclProxyState* proxyState =  (struct ncclProxyState*) _args;
   // if (CPU_COUNT(&comm->cpuAffinity)) sched_setaffinity(0, sizeof(cpu_set_t), &comm->cpuAffinity);

@@ -97,6 +97,8 @@ ncclResult_t CtranGpe::Impl::terminate() {
 }
 
 void CtranGpe::Impl::gpeThreadFn(CtranGpe::Impl* pimpl, int cudaDev) {
+  NCCL_NAMED_THREAD_START("CTranGPE");
+
   CUDACHECKTHROW(cudaSetDevice(cudaDev));
 
   while (1) {

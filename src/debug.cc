@@ -9,6 +9,7 @@
 #include "nccl_cvars.h"
 #include "logger.h"
 
+#include <debug.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <sys/syscall.h>
@@ -71,6 +72,7 @@ pthread_mutex_t ncclDebugLock = PTHREAD_MUTEX_INITIALIZER;
 std::chrono::steady_clock::time_point ncclEpoch;
 
 static __thread int tid = -1;
+static __thread char myThreadName[NCCL_THREAD_NAMELEN];
 
 void ncclDebugInit() {
   pthread_mutex_lock(&ncclDebugLock);
@@ -210,6 +212,9 @@ void ncclDebugLog(ncclDebugLogLevel level, unsigned long flags, const char *file
 
   if (tid == -1) {
     tid = syscall(SYS_gettid);
+    // All NCCL internal threads should already labeled via ncclSetMyThreadLoggingName.
+    // Thus, remaining threads are from users.
+    strcpy(myThreadName, "main");
   }
 
   int cudaDev;
@@ -220,17 +225,17 @@ void ncclDebugLog(ncclDebugLogLevel level, unsigned long flags, const char *file
   char buffer[1024];
   size_t len = 0;
   if (level == NCCL_LOG_WARN) {
-    len = snprintf(buffer, sizeof(buffer), "\n%s %s:%d:%d [%d] %s:%d NCCL WARN ",
-                   getTime().c_str(), hostname, pid, tid, cudaDev, filefunc, line);
+    len = snprintf(buffer, sizeof(buffer), "\n%s %s:%d:%d [%d][%s] %s:%d NCCL WARN ",
+                   getTime().c_str(), hostname, pid, tid, cudaDev, myThreadName, filefunc, line);
   } else if (level == NCCL_LOG_INFO) {
-    len = snprintf(buffer, sizeof(buffer), "%s %s:%d:%d [%d] NCCL INFO ", getTime().c_str(), hostname, pid, tid, cudaDev);
+    len = snprintf(buffer, sizeof(buffer), "%s %s:%d:%d [%d][%s] NCCL INFO ", getTime().c_str(), hostname, pid, tid, cudaDev, myThreadName);
   } else if (level == NCCL_LOG_TRACE && flags == NCCL_CALL) {
-    len = snprintf(buffer, sizeof(buffer), "%s %s:%d:%d NCCL CALL ", getTime().c_str(), hostname, pid, tid);
+    len = snprintf(buffer, sizeof(buffer), "%s %s:%d:%d [%s] NCCL CALL ", getTime().c_str(), hostname, pid, tid, myThreadName);
   } else if (level == NCCL_LOG_TRACE) {
     auto delta = std::chrono::steady_clock::now() - ncclEpoch;
     double timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(delta).count()*1000;
-    len = snprintf(buffer, sizeof(buffer), "%s %s:%d:%d [%d] %f %s:%d NCCL TRACE ",
-                   getTime().c_str(), hostname, pid, tid, cudaDev, timestamp, filefunc, line);
+    len = snprintf(buffer, sizeof(buffer), "%s %s:%d:%d [%d][%s] %f %s:%d NCCL TRACE ",
+                   getTime().c_str(), hostname, pid, tid, cudaDev, myThreadName, timestamp, filefunc, line);
   }
 
   if (len) {
@@ -263,4 +268,13 @@ void ncclSetThreadName(pthread_t thread, const char *fmt, ...) {
   va_end(vargs);
   pthread_setname_np(thread, threadName);
 #endif
+}
+
+void ncclSetMyThreadLoggingName(const char *fmt, ...) {
+  // Update tid so that ncclDebugLog won't re-query it via pthread_getname_np
+  tid = syscall(SYS_gettid);
+  va_list vargs;
+  va_start(vargs, fmt);
+  vsnprintf(myThreadName, NCCL_THREAD_NAMELEN, fmt, vargs);
+  va_end(vargs);
 }

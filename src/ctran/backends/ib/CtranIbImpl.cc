@@ -14,6 +14,7 @@
 #include "ExtChecks.h"
 
 void CtranIb::Impl::bootstrapAccept(CtranIb::Impl *pimpl) {
+  NCCL_NAMED_THREAD_START("CTranIbListen");
   while (1) {
     struct ncclSocket sock;
     int peerRank;

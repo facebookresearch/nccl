@@ -198,6 +198,7 @@ CollTrace::Dump CollTrace::dump() {
 }
 
 void* CollTrace::collTraceThreadFn(CollTrace* ct) {
+  NCCL_NAMED_THREAD_START("CollTrace");
   return ct->collTraceThreadFnImpl();
 }
 

@@ -104,6 +104,9 @@ static void *bootstrapRoot(void* rargs) {
   union ncclSocketAddress *rankAddresses = NULL;
   union ncclSocketAddress *rankAddressesRoot = NULL; // for initial rank <-> root information exchange
   union ncclSocketAddress *zero = NULL;
+
+  NCCL_NAMED_THREAD_START("BootStrapRoot");
+
   NCCLCHECKGOTO(ncclCalloc(&zero, 1), res, out);
   setFilesLimit();
 
