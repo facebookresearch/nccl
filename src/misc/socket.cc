@@ -8,6 +8,8 @@
 #include "utils.h"
 #include <stdlib.h>
 
+#include <chrono>
+#include <thread>
 #include <unistd.h>
 #include <ifaddrs.h>
 #include <net/if.h>
@@ -38,6 +40,19 @@
    default     : ""
    description : |-
      Hidden variable. No description provided.
+
+ - name        : NCCL_SOCKET_HOST_UNREACH_RETRY
+   type        : int64_t
+   default     : 4000
+   description : |-
+    How many times socket shall retry to connect to a host when it receives
+    EHOSTUNREACH error. See socketHandleHostUnreachable function for more info.
+
+ - name        : NCCL_SOCKET_RETRY_SLEEP_MS
+   type        : int64_t
+   default     : 50
+   description : |-
+    How long socket shall sleep between retrying to connect to a host in milliseconds.
 
 === END_NCCL_CVAR_INFO_BLOCK ===
 */
@@ -477,16 +492,36 @@ static ncclResult_t socketFinalizeAccept(struct ncclSocket* sock) {
   return ncclSuccess;
 }
 
+/**
+ * Linux will return EHOSTUNREACH to application during connect if gets a
+ * time exceeded in-transit ICMP message. We want to retry on this situation
+ * as those errors can be transient.
+ * See discussion for S404352: https://fburl.com/sevmanager/61lzsvs5
+ */
+static inline ncclResult_t socketHandleHostUnreachable(
+    struct ncclSocket* sock) {
+  if (++sock->hostUnreachRetries >= NCCL_SOCKET_HOST_UNREACH_RETRY) {
+    sock->state = ncclSocketStateError;
+    WARN(
+        "socketConnect: exceeded host unreachable retries (%d)",
+        sock->timedOutRetries);
+    return ncclRemoteError;
+  }
+
+  std::this_thread::sleep_for(
+      std::chrono::milliseconds(NCCL_SOCKET_RETRY_SLEEP_MS));
+  sock->state = ncclSocketStateConnecting;
+  return ncclSuccess;
+}
+
 static ncclResult_t socketStartConnect(struct ncclSocket* sock) {
   /* blocking/non-blocking connect() is determined by asyncFlag. */
   int ret = connect(sock->fd, &sock->addr.sa, sock->salen);
 
   if (ret == 0) {
     sock->state = ncclSocketStateConnected;
-    return ncclSuccess;
   } else if (errno == EINPROGRESS) {
     sock->state = ncclSocketStateConnectPolling;
-    return ncclSuccess;
   } else if (errno == ECONNREFUSED) {
     if (++sock->refusedRetries == RETRY_REFUSED_TIMES) {
       sock->state = ncclSocketStateError;
@@ -495,7 +530,6 @@ static ncclResult_t socketStartConnect(struct ncclSocket* sock) {
     }
     usleep(SLEEP_INT);
     if (sock->refusedRetries % 1000 == 0) INFO(NCCL_ALL, "Call to connect returned %s, retrying", strerror(errno));
-    return ncclSuccess;
   } else if (errno == ETIMEDOUT) {
     if (++sock->timedOutRetries == RETRY_TIMEDOUT_TIMES) {
       sock->state = ncclSocketStateError;
@@ -503,13 +537,15 @@ static ncclResult_t socketStartConnect(struct ncclSocket* sock) {
       return ncclRemoteError;
     }
     usleep(SLEEP_INT);
-    return ncclSuccess;
+  } else if (errno == EHOSTUNREACH) {
+    NCCLCHECK(socketHandleHostUnreachable(sock));
   } else {
     char line[SOCKET_NAME_MAXLEN+1];
     sock->state = ncclSocketStateError;
     WARN("socketStartConnect: Connect to %s failed : %s", ncclSocketToString(&sock->addr, line), strerror(errno));
     return ncclSystemError;
   }
+  return ncclSuccess;
 }
 
 static ncclResult_t socketPollConnect(struct ncclSocket* sock) {
@@ -553,6 +589,8 @@ static ncclResult_t socketPollConnect(struct ncclSocket* sock) {
     }
     usleep(SLEEP_INT);
     sock->state = ncclSocketStateConnecting;
+  } else if (ret == EHOSTUNREACH) {
+    NCCLCHECK(socketHandleHostUnreachable(sock));
   } else if (ret != EINPROGRESS) {
     sock->state = ncclSocketStateError;
     char line[SOCKET_NAME_MAXLEN+1];

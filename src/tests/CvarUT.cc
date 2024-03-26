@@ -3501,6 +3501,31 @@ TEST_F(CvarTest, NCCL_SOCKET_FAMILY_value_1) {
   EXPECT_EQ(NCCL_SOCKET_FAMILY, "val2_with_space");
 }
 
+TEST_F(CvarTest, NCCL_SOCKET_HOST_UNREACH_RETRY_value_0) {
+  testNumValue<int64_t>("NCCL_SOCKET_HOST_UNREACH_RETRY", 0);
+  EXPECT_EQ(NCCL_SOCKET_HOST_UNREACH_RETRY, 0);
+}
+
+TEST_F(CvarTest, NCCL_SOCKET_HOST_UNREACH_RETRY_value_1) {
+  testNumValue<int64_t>("NCCL_SOCKET_HOST_UNREACH_RETRY", 9999);
+  EXPECT_EQ(NCCL_SOCKET_HOST_UNREACH_RETRY, 9999);
+}
+
+TEST_F(CvarTest, NCCL_SOCKET_HOST_UNREACH_RETRY_value_2) {
+  testNumValue<int64_t>("NCCL_SOCKET_HOST_UNREACH_RETRY", std::numeric_limits<int64_t>::max());
+  EXPECT_EQ(NCCL_SOCKET_HOST_UNREACH_RETRY, std::numeric_limits<int64_t>::max());
+}
+
+TEST_F(CvarTest, NCCL_SOCKET_HOST_UNREACH_RETRY_value_3) {
+  testNumValue<int64_t>("NCCL_SOCKET_HOST_UNREACH_RETRY", std::numeric_limits<int64_t>::min());
+  EXPECT_EQ(NCCL_SOCKET_HOST_UNREACH_RETRY, std::numeric_limits<int64_t>::min());
+}
+
+TEST_F(CvarTest, NCCL_SOCKET_HOST_UNREACH_RETRY_default_value) {
+  testDefaultValue("NCCL_SOCKET_HOST_UNREACH_RETRY");
+  EXPECT_EQ(NCCL_SOCKET_HOST_UNREACH_RETRY, 4000);
+}
+
 TEST_F(CvarTest, NCCL_SOCKET_IFNAME_value_0) {
   setenv("NCCL_SOCKET_IFNAME", "val1", 1);
   ncclCvarInit();
@@ -3538,6 +3563,31 @@ TEST_F(CvarTest, NCCL_SOCKET_NTHREADS_default_value) {
   EXPECT_EQ(NCCL_SOCKET_NTHREADS, -2);
 }
 
+TEST_F(CvarTest, NCCL_SOCKET_RETRY_SLEEP_MS_value_0) {
+  testNumValue<int64_t>("NCCL_SOCKET_RETRY_SLEEP_MS", 0);
+  EXPECT_EQ(NCCL_SOCKET_RETRY_SLEEP_MS, 0);
+}
+
+TEST_F(CvarTest, NCCL_SOCKET_RETRY_SLEEP_MS_value_1) {
+  testNumValue<int64_t>("NCCL_SOCKET_RETRY_SLEEP_MS", 9999);
+  EXPECT_EQ(NCCL_SOCKET_RETRY_SLEEP_MS, 9999);
+}
+
+TEST_F(CvarTest, NCCL_SOCKET_RETRY_SLEEP_MS_value_2) {
+  testNumValue<int64_t>("NCCL_SOCKET_RETRY_SLEEP_MS", std::numeric_limits<int64_t>::max());
+  EXPECT_EQ(NCCL_SOCKET_RETRY_SLEEP_MS, std::numeric_limits<int64_t>::max());
+}
+
+TEST_F(CvarTest, NCCL_SOCKET_RETRY_SLEEP_MS_value_3) {
+  testNumValue<int64_t>("NCCL_SOCKET_RETRY_SLEEP_MS", std::numeric_limits<int64_t>::min());
+  EXPECT_EQ(NCCL_SOCKET_RETRY_SLEEP_MS, std::numeric_limits<int64_t>::min());
+}
+
+TEST_F(CvarTest, NCCL_SOCKET_RETRY_SLEEP_MS_default_value) {
+  testDefaultValue("NCCL_SOCKET_RETRY_SLEEP_MS");
+  EXPECT_EQ(NCCL_SOCKET_RETRY_SLEEP_MS, 50);
+}
+
 TEST_F(CvarTest, NCCL_THREAD_THRESHOLDS_value_0) {
   setenv("NCCL_THREAD_THRESHOLDS", "val1", 1);
   ncclCvarInit();
@@ -3548,6 +3598,23 @@ TEST_F(CvarTest, NCCL_THREAD_THRESHOLDS_value_1) {
   setenv("NCCL_THREAD_THRESHOLDS", "  val2_with_space   ", 1);
   ncclCvarInit();
   EXPECT_EQ(NCCL_THREAD_THRESHOLDS, "val2_with_space");
+}
+
+TEST_F(CvarTest, NCCL_TOPO_CLUSTER_FILE_value_0) {
+  setenv("NCCL_TOPO_CLUSTER_FILE", "val1", 1);
+  ncclCvarInit();
+  EXPECT_EQ(NCCL_TOPO_CLUSTER_FILE, "val1");
+}
+
+TEST_F(CvarTest, NCCL_TOPO_CLUSTER_FILE_value_1) {
+  setenv("NCCL_TOPO_CLUSTER_FILE", "  val2_with_space   ", 1);
+  ncclCvarInit();
+  EXPECT_EQ(NCCL_TOPO_CLUSTER_FILE, "val2_with_space");
+}
+
+TEST_F(CvarTest, NCCL_TOPO_CLUSTER_FILE_default_value) {
+  testDefaultValue("NCCL_TOPO_CLUSTER_FILE");
+  EXPECT_EQ(NCCL_TOPO_CLUSTER_FILE, "/var/run/nvidia-topologyd/cluster.xml");
 }
 
 TEST_F(CvarTest, NCCL_TOPO_DUMP_FILE_value_0) {
@@ -3597,23 +3664,6 @@ TEST_F(CvarTest, NCCL_TOPO_FILE_value_1) {
 TEST_F(CvarTest, NCCL_TOPO_FILE_default_value) {
   testDefaultValue("NCCL_TOPO_FILE");
   EXPECT_EQ(NCCL_TOPO_FILE, "/var/run/nvidia-topologyd/virtualTopology.xml");
-}
-
-TEST_F(CvarTest, NCCL_TOPO_CLUSTER_FILE_value_0) {
-  setenv("NCCL_TOPO_CLUSTER_FILE", "val1", 1);
-  ncclCvarInit();
-  EXPECT_EQ(NCCL_TOPO_CLUSTER_FILE, "val1");
-}
-
-TEST_F(CvarTest, NCCL_TOPO_CLUSTER_FILE_value_1) {
-  setenv("NCCL_TOPO_CLUSTER_FILE", "  val2_with_space   ", 1);
-  ncclCvarInit();
-  EXPECT_EQ(NCCL_TOPO_CLUSTER_FILE, "val2_with_space");
-}
-
-TEST_F(CvarTest, NCCL_TOPO_CLUSTER_FILE_default_value) {
-  testDefaultValue("NCCL_TOPO_CLUSTER_FILE");
-  EXPECT_EQ(NCCL_TOPO_CLUSTER_FILE, "/var/run/nvidia-topologyd/cluster.xml");
 }
 
 TEST_F(CvarTest, NCCL_TUNER_PLUGIN_value_0) {

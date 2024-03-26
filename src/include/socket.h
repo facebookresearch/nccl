@@ -57,6 +57,7 @@ struct ncclSocket {
   int acceptFd;
   int timedOutRetries;
   int refusedRetries;
+  int hostUnreachRetries;
   union ncclSocketAddress addr;
   volatile uint32_t* abortFlag;
   int asyncFlag;

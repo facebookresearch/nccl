@@ -475,14 +475,23 @@ extern bool NCCL_SHM_USE_CUDA_MEMCPY_DEFAULT;
 extern std::string NCCL_SOCKET_FAMILY;
 extern std::string NCCL_SOCKET_FAMILY_DEFAULT;
 
+extern int64_t NCCL_SOCKET_HOST_UNREACH_RETRY;
+extern int64_t NCCL_SOCKET_HOST_UNREACH_RETRY_DEFAULT;
+
 extern std::string NCCL_SOCKET_IFNAME;
 extern std::string NCCL_SOCKET_IFNAME_DEFAULT;
 
 extern int NCCL_SOCKET_NTHREADS;
 extern int NCCL_SOCKET_NTHREADS_DEFAULT;
 
+extern int64_t NCCL_SOCKET_RETRY_SLEEP_MS;
+extern int64_t NCCL_SOCKET_RETRY_SLEEP_MS_DEFAULT;
+
 extern std::string NCCL_THREAD_THRESHOLDS;
 extern std::string NCCL_THREAD_THRESHOLDS_DEFAULT;
+
+extern std::string NCCL_TOPO_CLUSTER_FILE;
+extern std::string NCCL_TOPO_CLUSTER_FILE_DEFAULT;
 
 extern std::string NCCL_TOPO_DUMP_FILE;
 extern std::string NCCL_TOPO_DUMP_FILE_DEFAULT;
@@ -492,9 +501,6 @@ extern int64_t NCCL_TOPO_DUMP_FILE_RANK_DEFAULT;
 
 extern std::string NCCL_TOPO_FILE;
 extern std::string NCCL_TOPO_FILE_DEFAULT;
-
-extern std::string NCCL_TOPO_CLUSTER_FILE;
-extern std::string NCCL_TOPO_CLUSTER_FILE_DEFAULT;
 
 extern std::string NCCL_TUNER_PLUGIN;
 extern std::string NCCL_TUNER_PLUGIN_DEFAULT;

@@ -1145,6 +1145,13 @@ Description:
 Type: string
 Default: 
 
+NCCL_SOCKET_HOST_UNREACH_RETRY
+Description:
+    How many times socket shall retry to connect to a host when it receives
+    EHOSTUNREACH error. See socketHandleHostUnreachable function for more info.
+Type: int64_t
+Default: 4000
+
 NCCL_SOCKET_IFNAME
 Description:
     The NCCL_SOCKET_IFNAME variable specifies which IP interface to
@@ -1164,11 +1171,23 @@ Description:
 Type: int
 Default: -2
 
+NCCL_SOCKET_RETRY_SLEEP_MS
+Description:
+    How long socket shall sleep between retrying to connect to a host in milliseconds.
+Type: int64_t
+Default: 50
+
 NCCL_THREAD_THRESHOLDS
 Description:
     Hidden variable. No description provided.
 Type: string
 Default: 
+
+NCCL_TOPO_CLUSTER_FILE
+Description:
+    Path to an cluster XML file to load.
+Type: string
+Default: /var/run/nvidia-topologyd/cluster.xml
 
 NCCL_TOPO_DUMP_FILE
 Description:

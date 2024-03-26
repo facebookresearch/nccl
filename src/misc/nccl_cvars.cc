@@ -479,20 +479,24 @@ bool NCCL_SHM_USE_CUDA_MEMCPY;
 bool NCCL_SHM_USE_CUDA_MEMCPY_DEFAULT;
 std::string NCCL_SOCKET_FAMILY;
 std::string NCCL_SOCKET_FAMILY_DEFAULT;
+int64_t NCCL_SOCKET_HOST_UNREACH_RETRY;
+int64_t NCCL_SOCKET_HOST_UNREACH_RETRY_DEFAULT;
 std::string NCCL_SOCKET_IFNAME;
 std::string NCCL_SOCKET_IFNAME_DEFAULT;
 int NCCL_SOCKET_NTHREADS;
 int NCCL_SOCKET_NTHREADS_DEFAULT;
+int64_t NCCL_SOCKET_RETRY_SLEEP_MS;
+int64_t NCCL_SOCKET_RETRY_SLEEP_MS_DEFAULT;
 std::string NCCL_THREAD_THRESHOLDS;
 std::string NCCL_THREAD_THRESHOLDS_DEFAULT;
+std::string NCCL_TOPO_CLUSTER_FILE;
+std::string NCCL_TOPO_CLUSTER_FILE_DEFAULT;
 std::string NCCL_TOPO_DUMP_FILE;
 std::string NCCL_TOPO_DUMP_FILE_DEFAULT;
 int64_t NCCL_TOPO_DUMP_FILE_RANK;
 int64_t NCCL_TOPO_DUMP_FILE_RANK_DEFAULT;
 std::string NCCL_TOPO_FILE;
 std::string NCCL_TOPO_FILE_DEFAULT;
-std::string NCCL_TOPO_CLUSTER_FILE;
-std::string NCCL_TOPO_CLUSTER_FILE_DEFAULT;
 std::string NCCL_TUNER_PLUGIN;
 std::string NCCL_TUNER_PLUGIN_DEFAULT;
 int64_t NCCL_WARN_ENABLE_DEBUG_INFO;
@@ -641,13 +645,15 @@ void initEnvSet(std::unordered_set<std::string>& env) {
   env.insert("NCCL_SHM_MEMCPY_MODE");
   env.insert("NCCL_SHM_USE_CUDA_MEMCPY");
   env.insert("NCCL_SOCKET_FAMILY");
+  env.insert("NCCL_SOCKET_HOST_UNREACH_RETRY");
   env.insert("NCCL_SOCKET_IFNAME");
   env.insert("NCCL_SOCKET_NTHREADS");
+  env.insert("NCCL_SOCKET_RETRY_SLEEP_MS");
   env.insert("NCCL_THREAD_THRESHOLDS");
+  env.insert("NCCL_TOPO_CLUSTER_FILE");
   env.insert("NCCL_TOPO_DUMP_FILE");
   env.insert("NCCL_TOPO_DUMP_FILE_RANK");
   env.insert("NCCL_TOPO_FILE");
-  env.insert("NCCL_TOPO_CLUSTER_FILE");
   env.insert("NCCL_TUNER_PLUGIN");
   env.insert("NCCL_WARN_ENABLE_DEBUG_INFO");
   env.insert("NCCL_WORK_FIFO_DEPTH");
@@ -1199,14 +1205,23 @@ void readCvarEnv() {
   NCCL_SOCKET_FAMILY = env2str("NCCL_SOCKET_FAMILY", "");
   NCCL_SOCKET_FAMILY_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "");
 
+  NCCL_SOCKET_HOST_UNREACH_RETRY = env2num<int64_t>("NCCL_SOCKET_HOST_UNREACH_RETRY", "4000");
+  NCCL_SOCKET_HOST_UNREACH_RETRY_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "4000");
+
   NCCL_SOCKET_IFNAME = env2str("NCCL_SOCKET_IFNAME", "");
   NCCL_SOCKET_IFNAME_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "");
 
   NCCL_SOCKET_NTHREADS = env2num<int>("NCCL_SOCKET_NTHREADS", "-2");
   NCCL_SOCKET_NTHREADS_DEFAULT = env2num<int>("NCCL_ENV_DO_NOT_SET", "-2");
 
+  NCCL_SOCKET_RETRY_SLEEP_MS = env2num<int64_t>("NCCL_SOCKET_RETRY_SLEEP_MS", "50");
+  NCCL_SOCKET_RETRY_SLEEP_MS_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "50");
+
   NCCL_THREAD_THRESHOLDS = env2str("NCCL_THREAD_THRESHOLDS", "");
   NCCL_THREAD_THRESHOLDS_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "");
+
+  NCCL_TOPO_CLUSTER_FILE = env2str("NCCL_TOPO_CLUSTER_FILE", "/var/run/nvidia-topologyd/cluster.xml");
+  NCCL_TOPO_CLUSTER_FILE_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "/var/run/nvidia-topologyd/cluster.xml");
 
   NCCL_TOPO_DUMP_FILE = env2str("NCCL_TOPO_DUMP_FILE", "");
   NCCL_TOPO_DUMP_FILE_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "");
@@ -1216,9 +1231,6 @@ void readCvarEnv() {
 
   NCCL_TOPO_FILE = env2str("NCCL_TOPO_FILE", "/var/run/nvidia-topologyd/virtualTopology.xml");
   NCCL_TOPO_FILE_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "/var/run/nvidia-topologyd/virtualTopology.xml");
-
-  NCCL_TOPO_CLUSTER_FILE = env2str("NCCL_TOPO_CLUSTER_FILE", "/var/run/nvidia-topologyd/cluster.xml");
-  NCCL_TOPO_CLUSTER_FILE_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "/var/run/nvidia-topologyd/cluster.xml");
 
   NCCL_TUNER_PLUGIN = env2str("NCCL_TUNER_PLUGIN", "");
   NCCL_TUNER_PLUGIN_DEFAULT = env2str("NCCL_ENV_DO_NOT_SET", "");
