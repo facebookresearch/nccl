@@ -1,5 +1,6 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
+#include <group.h>
 #include <deque>
 #include "Ctran.h"
 #include "CtranGpe.h"
@@ -178,7 +179,8 @@ ncclResult_t ctranSend(
     int peer,
     ncclComm_t comm,
     cudaStream_t stream) {
-  CTRAN_COLL_INFO("CtranSend", sendbuff, nullptr, count, datatype, peer, comm, stream);
+  CTRAN_COLL_INFO(
+      "CtranSend", sendbuff, nullptr, count, datatype, peer, comm, stream);
 
   ncclResult_t res = ncclSuccess;
   struct OpElem* op;
@@ -201,7 +203,8 @@ ncclResult_t ctranRecv(
     int peer,
     ncclComm_t comm,
     cudaStream_t stream) {
-  CTRAN_COLL_INFO("CtranRecv", nullptr, recvbuff, count, datatype, peer, comm, stream);
+  CTRAN_COLL_INFO(
+      "CtranRecv", nullptr, recvbuff, count, datatype, peer, comm, stream);
 
   ncclResult_t res = ncclSuccess;
   struct OpElem* op;
@@ -250,8 +253,7 @@ ncclResult_t ctranGroupEndHook(void) {
     }
 
     if (hasSend && hasRecv) {
-      auto config =
-          KernelConfig(KernelConfig::KernelType::SENDRECV, stream);
+      auto config = KernelConfig(KernelConfig::KernelType::SENDRECV, stream);
       NCCLCHECK(comm->ctran->gpe->submit(
           std::move(toSubmit),
           sendRecvImpl,
@@ -274,8 +276,20 @@ ncclResult_t ctranGroupEndHook(void) {
     }
 
     toSubmit.clear();
+    // All ops in a group should use the same opCount. Thus, increase opCount if
+    // only CTran ops are enqueued; otherwise let default path increase.
+    if (comm->ctran->numGroupedDefaultOps == 0) {
+      comm->opCount++;
+    }
+    comm->ctran->numGroupedDefaultOps = 0;
     CtranOpGroup = std::move(pending);
   }
 
   return ncclSuccess;
+}
+
+void ctranGroupTrackDefaultOp(ncclComm* comm) {
+  if (ctranInitialized(comm)) {
+    comm->ctran->numGroupedDefaultOps++;
+  }
 }

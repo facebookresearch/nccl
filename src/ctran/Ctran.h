@@ -54,12 +54,14 @@
 === END_NCCL_CVAR_INFO_BLOCK ===
 */
 
+extern __thread int ncclGroupDepth;
+
 #define CTRAN_COLL_INFO(                                                                                                                     \
     algoStr, sendbuff, recvbuff, count, datatype, peer, comm, stream)                                                                        \
   do {                                                                                                                                       \
     INFO(                                                                                                                                    \
         NCCL_COLL,                                                                                                                           \
-        "%s: opCount %lx sendbuff %p recvbuff %p count %zi datatype %d peer %d comm %p commHash %lu [nranks=%d, localRanks=%d] stream=%p\n", \
+        "%s: opCount %lx sendbuff %p recvbuff %p count %zi datatype %d peer %d comm %p commHash %lx [nranks=%d, localRanks=%d] stream=%p\n", \
         algoStr,                                                                                                                             \
         comm->opCount,                                                                                                                       \
         sendbuff,                                                                                                                            \
@@ -72,7 +74,11 @@
         comm->nRanks,                                                                                                                        \
         comm->localRanks,                                                                                                                    \
         stream);                                                                                                                             \
-    comm->opCount++;                                                                                                                         \
+    /* Increase only for single op. Grouped-op uses same opCount and increase                                                                \
+     * at groupEnd */                                                                                                                        \
+    if (ncclGroupDepth == 0) {                                                                                                               \
+      comm->opCount++;                                                                                                                       \
+    }                                                                                                                                        \
   } while (0)
 
 class Ctran {
@@ -86,6 +92,8 @@ class Ctran {
   std::unique_ptr<CtranMapper> mapper{nullptr};
   std::unique_ptr<CtranGpe> gpe{nullptr};
   std::unique_ptr<CtranAlgo> algo{nullptr};
+
+  uint64_t numGroupedDefaultOps{0};
 };
 
 inline bool ctranIsUsed() {
@@ -167,4 +175,5 @@ ncclResult_t ctranAllToAllv(
     ncclComm_t comm,
     cudaStream_t stream);
 
+void ctranGroupTrackDefaultOp(ncclComm* comm);
 #endif // CTRAN_COMM_H_

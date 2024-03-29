@@ -159,6 +159,20 @@ NCCL_API(ncclResult_t, ncclSend, const void* sendbuff, size_t count, ncclDataTyp
     ncclComm_t comm, cudaStream_t stream);
 ncclResult_t ncclSend(const void* sendbuff, size_t count, ncclDataType_t datatype, int peer,
     ncclComm_t comm, cudaStream_t stream) {
+  if (NCCL_SENDRECV_ALGO == NCCL_SENDRECV_ALGO::ctran &&
+      ctranSendRecvSupport(peer, comm)) {
+    // ctran send/recvs are enqueued within ctran wherease other non-ctran ones
+    // are enqueued in the original queue. When reaching group end, these two
+    // groups of ops will be issued separately.
+    ncclResult_t ret;
+    NCCLCHECK(ncclGroupStart());
+    ret = ctranSend(sendbuff, count, datatype, peer, comm, stream);
+    NCCLCHECK(ncclGroupEnd());
+    return ret;
+  }
+
+  ctranGroupTrackDefaultOp(comm);
+
   NvtxParamsSendRecv payload{count * ncclTypeSize(datatype), peer};
   NVTX3_FUNC_WITH_PARAMS(Send, SendRecvSchema, payload)
 
@@ -176,6 +190,20 @@ NCCL_API(ncclResult_t, ncclRecv, void* recvbuff, size_t count, ncclDataType_t da
     ncclComm_t comm, cudaStream_t stream);
 ncclResult_t ncclRecv(void* recvbuff, size_t count, ncclDataType_t datatype, int peer,
     ncclComm_t comm, cudaStream_t stream) {
+  if (NCCL_SENDRECV_ALGO == NCCL_SENDRECV_ALGO::ctran &&
+      ctranSendRecvSupport(peer, comm)) {
+    // ctran send/recvs are enqueued within ctran wherease other non-ctran ones
+    // are enqueued in the original queue. When reaching group end, these two
+    // groups of ops will be issued separately.
+    ncclResult_t ret;
+    NCCLCHECK(ncclGroupStart());
+    ret = ctranRecv(recvbuff, count, datatype, peer, comm, stream);
+    NCCLCHECK(ncclGroupEnd());
+    return ret;
+  }
+
+  ctranGroupTrackDefaultOp(comm);
+
   NvtxParamsSendRecv payload{count * ncclTypeSize(datatype), peer};
   NVTX3_FUNC_WITH_PARAMS(Recv, SendRecvSchema, payload)
 

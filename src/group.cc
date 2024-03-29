@@ -377,6 +377,8 @@ ncclResult_t ncclGroupEndInternal() {
 
   if ((--ncclGroupDepth) > 0) goto exit;
 
+  NCCLCHECKGOTO(ctranGroupEndHook(), ret, fail);
+
   if ((ret = ncclGroupError) != ncclSuccess) goto fail;
 
   if (ncclGroupCommHead != nullptr || !ncclIntruQueueEmpty(&ncclAsyncJobs) || ncclGroupCommPreconnectHead != nullptr) {
