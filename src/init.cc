@@ -2374,6 +2374,9 @@ ncclResult_t ncclCommGetAsyncError(ncclComm_t comm, ncclResult_t *asyncError) {
   NCCLCHECK(PtrCheck(asyncError, "ncclGetAsyncError", "asyncError"));
 
   *asyncError = __atomic_load_n(&comm->asyncResult, __ATOMIC_ACQUIRE);
+  if (*asyncError == ncclSuccess && comm->proxyState) {
+    *asyncError = comm->proxyState->asyncResult;
+  }
   return ncclSuccess;
 }
 
