@@ -6,6 +6,7 @@
 #include <iostream>
 #include <new>
 #include <stdexcept>
+#include <unordered_map>
 #include "CtranChecks.h"
 #include "CtranGpe.h"
 #include "CtranGpeKernel.h"
@@ -23,6 +24,16 @@
      Each p2p element is allocated from page-locked memory on the host.
 === END_NCCL_CVAR_INFO_BLOCK ===
 */
+
+static std::unordered_map<KernelConfig::KernelType, const std::string>
+    kernelTypeToName = {
+        {KernelConfig::KernelType::ALLGATHER, "AllGather"},
+        {KernelConfig::KernelType::SEND, "Send"},
+        {KernelConfig::KernelType::RECV, "Recv"},
+        {KernelConfig::KernelType::SENDRECV, "SendRecv"},
+        {KernelConfig::KernelType::ALLTOALL, "AllToAll"},
+        {KernelConfig::KernelType::ALLTOALLV, "AllToAllv"},
+};
 
 CtranGpe::Impl::Impl() {
   CUDACHECKTHROW(
@@ -52,7 +63,19 @@ ncclResult_t CtranGpe::Impl::submit(
   // Check it before passing opGroup to cmd
   std::vector<void*> kernelArgs;
   void* kernelFlag = opGroup.size() ? this->kernelFlag : nullptr;
+
+  // Error checking before GPE cmd and kernel submission
+  if (kernelConfig.args.devState_d == nullptr) {
+    WARN(
+        "NCCL internally passed invalid devState_d (nullptr) to kernel %s",
+        kernelTypeToName[kernelConfig.type].c_str());
+    return ncclInternalError;
+  }
+
+  // Specify collective arguments
   kernelArgs.push_back(&kernelFlag);
+  kernelArgs.push_back((void*)&kernelConfig.args.devState_d);
+  kernelArgs.push_back((void*)&kernelConfig.args.collective);
 
   // Enqueue op to gpeThread if any op is appended
   if (!opGroup.empty()) {
@@ -74,10 +97,6 @@ ncclResult_t CtranGpe::Impl::submit(
   // operations on this stream have completed
   dim3 grid = {kernelConfig.numBlocks, 1, 1};
   dim3 blocks = {kernelConfig.numThreads, 1, 1};
-
-  // Specify collective arguments
-  kernelArgs.push_back((void*)&kernelConfig.args.devState_d);
-  kernelArgs.push_back((void*)&kernelConfig.args.collective);
 
   CUDACHECK(cudaLaunchKernel(
       ncclKernel, grid, blocks, kernelArgs.data(), 0, kernelConfig.stream));

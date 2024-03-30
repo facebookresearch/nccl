@@ -220,6 +220,14 @@ ncclResult_t ctranRecv(
   return res;
 }
 
+static inline void setSendRecvKernelArgs(
+    std::vector<std::unique_ptr<struct OpElem>>& opGroup,
+    CtranAlgoDeviceState* devState_d,
+    CtranKernelArgs* args) {
+  // opGroup is unused for now as we don't support NVL path yet.
+  args->devState_d = devState_d;
+}
+
 ncclResult_t ctranGroupEndHook(void) {
   ncclComm_t comm;
   cudaStream_t stream;
@@ -234,6 +242,7 @@ ncclResult_t ctranGroupEndHook(void) {
       break;
     }
 
+    // submit ops with the same comm and stream in a single batch
     comm = CtranOpGroup.front()->comm;
     stream = CtranOpGroup.front()->stream;
     while (!CtranOpGroup.empty()) {
@@ -248,12 +257,16 @@ ncclResult_t ctranGroupEndHook(void) {
           hasRecv = true;
         }
       } else {
+        // if not belong to this batch, put back to pending queue and handled in
+        // next batch
         pending.push_back(op);
       }
     }
 
     if (hasSend && hasRecv) {
       auto config = KernelConfig(KernelConfig::KernelType::SENDRECV, stream);
+      setSendRecvKernelArgs(
+          toSubmit, comm->ctran->algo->devState_d, &config.args);
       NCCLCHECK(comm->ctran->gpe->submit(
           std::move(toSubmit),
           sendRecvImpl,
@@ -261,6 +274,8 @@ ncclResult_t ctranGroupEndHook(void) {
           reinterpret_cast<void*>(ncclKernelSendRecv)));
     } else if (hasSend) {
       auto config = KernelConfig(KernelConfig::KernelType::SEND, stream);
+      setSendRecvKernelArgs(
+          toSubmit, comm->ctran->algo->devState_d, &config.args);
       NCCLCHECK(comm->ctran->gpe->submit(
           std::move(toSubmit),
           sendRecvImpl,
@@ -268,6 +283,8 @@ ncclResult_t ctranGroupEndHook(void) {
           reinterpret_cast<void*>(ncclKernelSend)));
     } else if (hasRecv) {
       auto config = KernelConfig(KernelConfig::KernelType::RECV, stream);
+      setSendRecvKernelArgs(
+          toSubmit, comm->ctran->algo->devState_d, &config.args);
       NCCLCHECK(comm->ctran->gpe->submit(
           std::move(toSubmit),
           sendRecvImpl,
@@ -282,6 +299,8 @@ ncclResult_t ctranGroupEndHook(void) {
       comm->opCount++;
     }
     comm->ctran->numGroupedDefaultOps = 0;
+
+    // handle next batch
     CtranOpGroup = std::move(pending);
   }
 

@@ -58,7 +58,7 @@ struct CtranKernelAllToAllvArgs {
 };
 
 struct CtranKernelArgs {
-  CtranAlgoDeviceState* devState_d;
+  CtranAlgoDeviceState* devState_d{nullptr};
   union {
     CtranKernelAllGatherArgs allgather;
     CtranKernelSendArgs send;

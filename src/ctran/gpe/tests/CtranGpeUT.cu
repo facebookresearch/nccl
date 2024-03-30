@@ -19,23 +19,29 @@ class CtranGpeTest : public ::testing::Test {
   CtranGpe* gpe;
   int cudaDev;
   ncclComm_t dummyComm;
+  CtranAlgoDeviceState* dummyDevState_d {nullptr};
+
   CtranGpeTest() = default;
 
  protected:
   void SetUp() override {
     cudaDev = 0;
     gpe = nullptr;
+
+    CUDACHECK_TEST(cudaMalloc(&dummyDevState_d, sizeof(CtranAlgoDeviceState)));
   }
   void TearDown() override {
     if (gpe != nullptr) {
       delete gpe;
     }
+    CUDACHECK_TEST(cudaFree(dummyDevState_d));
   }
 };
 
 class CtranGpeKernelTest : public ::testing::Test {
  public:
   volatile int* testFlag;
+  CtranAlgoDeviceState* dummyDevState_d {nullptr};
   int cudaDev;
   CtranGpeKernelTest() = default;
 
@@ -46,9 +52,12 @@ class CtranGpeKernelTest : public ::testing::Test {
     CUDACHECKIGNORE(
         cudaHostAlloc((void**)&testFlag, sizeof(int), cudaHostAllocDefault));
     *testFlag = UNSET;
+
+    CUDACHECK_TEST(cudaMalloc(&dummyDevState_d, sizeof(CtranAlgoDeviceState)));
   }
   void TearDown() override {
     CUDACHECKIGNORE(cudaFreeHost((void*)testFlag));
+    CUDACHECK_TEST(cudaFree(dummyDevState_d));
   }
 };
 
@@ -121,12 +130,21 @@ TEST_F(CtranGpeTest, SubmitOpBadArgs) {
   ops.push_back(std::unique_ptr<struct OpElem>(op));
 
   auto kernelConfig = KernelConfig(KernelConfig::KernelType::SEND, nullptr);
+  kernelConfig.args.devState_d = dummyDevState_d;
 
   /* NOTE: invalid CUDA kernel should return error code */
   res =
       gpe->submit(std::move(ops), &CtranGpeTestAlgoFunc, kernelConfig, nullptr);
-
   EXPECT_NE(res, ncclSuccess);
+
+  // Invalid devState_d should be checked and return ncclInternalError
+  kernelConfig.args.devState_d = nullptr;
+  res = gpe->submit(
+      std::move(ops),
+      &CtranGpeTestAlgoFunc,
+      kernelConfig,
+      reinterpret_cast<void*>(CtranGpeTestKernel));
+  EXPECT_EQ(res, ncclInternalError);
 }
 
 constexpr int count = 1024;
@@ -158,7 +176,7 @@ TEST_F(CtranGpeTest, SubmitOpKernel) {
       a,
       reinterpret_cast<void*>(kKernelpdatedVal),
       count,
-      nullptr,
+      dummyDevState_d,
       &config.args);
 
   testing::internal::CaptureStdout();
@@ -205,7 +223,7 @@ TEST_F(CtranGpeTest, SubmitOnlyKernel) {
       a,
       reinterpret_cast<void*>(kKernelpdatedVal),
       count,
-      nullptr,
+      dummyDevState_d,
       &config.args);
 
   // empty OpGroup would launch only kernel
@@ -276,7 +294,7 @@ TEST_F(CtranGpeKernelTest, SubmitKernelWithP2pElems) {
   // gridSize to consume the elems
   std::vector<std::unique_ptr<struct OpElem>> emptyOps;
   auto config = KernelConfig(KernelConfig::KernelType::ALLGATHER, stream);
-  ctranKernelSetAllGatherArgs(elemList, nullptr, 0, nullptr, &config.args);
+  ctranKernelSetAllGatherArgs(elemList, nullptr, 0, dummyDevState_d, &config.args);
   config.numBlocks = ngroups;
 
   // Empty OpGroup would launch only kernel
