@@ -5,7 +5,9 @@
 #include <gtest/gtest.h>
 #include <nccl.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <cstddef>
+#include <cstdint>
 #include "Ctran.h"
 #include "checks.h"
 #include "nccl_cvars.h"
@@ -73,6 +75,100 @@ class AllToAllvTest : public ::testing::Test {
       }
     }
     return errs;
+  }
+
+  void runReuseSharedBuffer(bool registFlag = false) {
+#ifdef NCCL_ALLTOALLV_SUPPORTED
+    if(this->globalRank > 1){
+      return;
+    }
+
+    // prepare alltoallv arguments
+    std::vector<size_t> sendCounts(this->numRanks);
+    std::vector<size_t> sendDispls(this->numRanks);
+    std::vector<size_t> recvCounts(this->numRanks);
+    std::vector<size_t> recvDispls(this->numRanks);
+    if(this->globalRank == 0){
+      sendCounts[0] = 60000776;
+      sendCounts[1] = 60000172;
+      recvCounts[0] = 60000776;
+      recvCounts[1] = 60000316;
+    }
+    else if(this->globalRank == 1){
+      sendCounts[0] = 60000316;
+      sendCounts[1] = 60000564;
+      recvCounts[0] = 60000172;
+      recvCounts[1] = 60000564;
+    }
+    sendDispls[0] = 0;
+    recvDispls[0] = 0;
+    for (int i = 1; i < 2; i++) {
+      sendDispls[i] = sendDispls[i-1] + sendCounts[i-1];
+      recvDispls[i] = recvDispls[i-1] + recvCounts[i-1];
+    }
+
+    int sendCount = 0;
+    int recvCount = 0;
+    for (int i = 0; i < 2; i++) {
+      sendCount += sendCounts[i];
+      recvCount += recvCounts[i];
+    }
+
+    // create and register buffers
+    int *sendBuf = nullptr, *recvBuf = nullptr;
+    void *sendHandle = nullptr, *recvHandle = nullptr;
+
+    CUDACHECK_TEST(cudaMalloc(&sendBuf, sendCount * sizeof(int)));
+    CUDACHECK_TEST(cudaMalloc(&recvBuf, recvCount * sizeof(int)));
+
+    int shared_buf_size = NCCL_CTRAN_SHARED_DEVBUF_SIZE;
+    int bufCount = shared_buf_size / sizeof(int);
+    assignChunkValue(sendBuf, sendCount, -1);
+    if(this->globalRank == 1){
+      for(int i=0; i<sendCounts[0]/bufCount; i++){
+        assignChunkValue(sendBuf+sendDispls[0]+i*bufCount, bufCount, i);
+      }
+    }
+    assignChunkValue(recvBuf, recvCount, -1);
+
+    if (registFlag) {
+      NCCLCHECK_TEST(ncclCommRegister(
+          comm, sendBuf, sendCount * sizeof(int), &sendHandle));
+      NCCLCHECK_TEST(ncclCommRegister(
+          comm, recvBuf, recvCount * sizeof(int), &recvHandle));
+    }
+
+    // run alltoallv
+    auto res = ncclAllToAllv(
+        sendBuf,
+        sendCounts.data(),
+        sendDispls.data(),
+        recvBuf,
+        recvCounts.data(),
+        recvDispls.data(),
+        ncclInt,
+        comm,
+        stream);
+    ASSERT_EQ(res, ncclSuccess);
+    CUDACHECK_TEST(cudaStreamSynchronize(stream));
+
+
+    if(this->globalRank == 0){
+      for(int i=0; i<recvCounts[1]/bufCount; i++){
+        int errs =
+            checkChunkValue(recvBuf + recvDispls[1]+i*bufCount, bufCount, i);
+        EXPECT_EQ(errs, 0) << "failed on rank " << this->globalRank << " and iteration i=" << i;
+      }
+    }
+
+    if (registFlag) {
+      NCCLCHECK_TEST(ncclCommDeregister(comm, sendHandle));
+      NCCLCHECK_TEST(ncclCommDeregister(comm, recvHandle));
+    }
+
+    CUDACHECK_TEST(cudaFree(sendBuf));
+    CUDACHECK_TEST(cudaFree(recvBuf));
+#endif
   }
 
   void runCanCopy16Mismatch(bool registFlag = false) {
@@ -297,6 +393,20 @@ TEST_F(AllToAllvTest, OrigCanCopy16Mismatch) {
   setenv("NCCL_ALLTOALLV_ALGO", "orig", 1);
   ncclCvarInit();
   runCanCopy16Mismatch();
+  unsetenv("NCCL_ALLTOALLV_ALGO");
+}
+
+TEST_F(AllToAllvTest, DISABLED_CtranReuseSharedBuffer) {
+  setenv("NCCL_ALLTOALLV_ALGO", "ctran", 1);
+  ncclCvarInit();
+  runReuseSharedBuffer();
+  unsetenv("NCCL_ALLTOALLV_ALGO");
+}
+
+TEST_F(AllToAllvTest, OrigReuseSharedBuffer) {
+  setenv("NCCL_ALLTOALLV_ALGO", "orig", 1);
+  ncclCvarInit();
+  runReuseSharedBuffer();
   unsetenv("NCCL_ALLTOALLV_ALGO");
 }
 
