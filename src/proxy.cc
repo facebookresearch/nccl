@@ -1124,7 +1124,7 @@ ncclResult_t ncclProxyClientConvertFdBlocking(struct ncclComm* comm, struct nccl
   void* opId = malloc(1);
   // Create a UDS socket to receive the converted fd
   NCCLCHECK(ncclIpcSocketInit(&ipcSock, comm->topParentLocalRanks[comm->localRank], (uint64_t)opId, comm->abortFlag));
-
+  TRACE(NCCL_ALLOC, "ncclProxyClientConvertFdBlocking size: %i", *((int*)(&fd)));
   // Request the conversion of the fd over sockets
   NCCLCHECKGOTO(ncclProxyCallAsync(comm, proxyConn, ncclProxyMsgConvertFd, &fd, sizeof(int), 0, opId), ret, error);
 
@@ -1156,7 +1156,9 @@ ncclResult_t ncclProxyCallAsync(struct ncclComm* comm, struct ncclProxyConnector
 
   sock = sharedProxyState->peerSocks + proxyConn->tpLocalRank;
   if (sock == NULL) return ncclInternalError;
-
+  if (type == ncclProxyMsgSetup or type == ncclProxyMsgConnect or type == ncclProxyMsgSharedInit) {
+    TRACE(NCCL_ALLOC, "ncclProxyCallAsync, type: %s, size: %i, req size: %i, respSize size: %i",  ncclProxyMsgTypeStr[type],  *((int*)reqBuff), reqSize, respSize);
+  }
   NCCLCHECKGOTO(ncclSocketSend(sock, &type, sizeof(int)), ret, error);
   NCCLCHECKGOTO(ncclSocketSend(sock, &proxyConn->connection, sizeof(void*)), ret, error);
   NCCLCHECKGOTO(ncclSocketSend(sock, &reqSize, sizeof(int)), ret, error);
@@ -1352,7 +1354,6 @@ static ncclResult_t proxyConvertFd(struct ncclProxyLocalPeer* peer, void *opId, 
 static ncclResult_t proxyProgressAsync(struct ncclProxyAsyncOp* op, struct ncclProxyState* proxyState, int* asyncOpCount, struct ncclProxyLocalPeer* peer, struct ncclProxyConnectionPool* connectionPool) {
   int done = 1;
   if (op->type == ncclProxyMsgSetup) {
-    TRACE(NCCL_PROXY, "proxyProgressAsync::proxySetup() opId=%p", op->opId);
     NCCLCHECK(op->connection->tcomm->proxySetup(op->connection, proxyState, op->reqBuff, op->reqSize, op->respBuff, op->respSize, &done));
   } else if (op->type == ncclProxyMsgConnect) {
     TRACE(NCCL_PROXY, "proxyProgressAsync::proxyConnect() opId=%p op.reqBuff=%p", op->opId, op->reqBuff);
@@ -1372,7 +1373,7 @@ static ncclResult_t proxyProgressAsync(struct ncclProxyAsyncOp* op, struct ncclP
   } else return ncclInternalError;
 
   if (done) {
-    INFO(NCCL_PROXY, "proxyProgressAsync opId=%p op.type=%d op.reqBuff=%p op.respSize=%d done", op->opId, op->type, op->reqBuff, op->respSize);
+     TRACE(NCCL_ALLOC, "proxyProgressAsync opId=%p op.type=%d op.reqBuff= %i op.respSize=%d done", op->opId, op->type, *((int*)op->reqBuff), op->respSize);
     if (op->type == ncclProxyMsgSetup)
       __atomic_store_n(&op->connection->state, connSetupDone, __ATOMIC_RELEASE);
     else if (op->type == ncclProxyMsgConnect)
@@ -1417,6 +1418,9 @@ static ncclResult_t proxyServiceInitOp(int type, struct ncclProxyLocalPeer* peer
   if (asyncOp->reqSize) {
     NCCLCHECK(ncclCalloc(&asyncOp->reqBuff, asyncOp->reqSize));
     NCCLCHECK(ncclSocketRecv(sock, asyncOp->reqBuff, asyncOp->reqSize));
+    if (type == ncclProxyMsgSetup or type == ncclProxyMsgConnect or type == ncclProxyMsgSharedInit) {
+      TRACE(NCCL_ALLOC, "in proxyServiceInitOp, size: %i, req size: %i, type: %i",  *((int*)asyncOp->reqBuff),  asyncOp->reqSize, type);
+    }
   }
 
   // Store opId for completion response
@@ -1531,6 +1535,9 @@ void* ncclProxyService(void* _args) {
       while (op != nullptr) {
         ncclProxyAsyncOp* opnext = op->next; /* in case op is freed in proxyProgressAsync */
         type = op->type;
+        if (type == ncclProxyMsgSetup or type == ncclProxyMsgConnect or type == ncclProxyMsgSharedInit) {
+            TRACE(NCCL_ALLOC, "calling proxyProgressAsync in ncclProxyService, size: %i, req size: %i, type: %i",  *((int*)op->reqBuff), op->reqSize, type);
+        }
         res = proxyProgressAsync(op, proxyState, &asyncOpCount, peer, &connectionPool);
         if (res == ncclSuccess || res == ncclInProgress) {
           op = opnext;

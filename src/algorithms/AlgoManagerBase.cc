@@ -46,6 +46,7 @@ AlgoManagerBase::AlgoManagerBase(ncclComm_t comm) : comm_(comm), memHandler_(com
   // 1) [r0, r1, ..., rN-1]
   // 2) [r0, r1, ..., rN-1]@block0, [r0, r1, ..., rN-1]@block1, ...@blockK-1
   // 3) [r0, r1, ..., rN-1]@block0, [r0, r1, ..., rN-1]@block1, ...@blockK-1
+  TRACE(NCCL_ALLOC, "Cuda Alloc Size %ld pointer (cudaMalloc)", (1 + 2 * maxBlocks_) * comm_->nRanks * sizeof(uintptr_t));
   CUDACHECKIGNORE(cudaMalloc(
       &threadedBarrierMbox_d_,
       ((1 + 2 * maxBlocks_) * comm_->nRanks) * sizeof(uintptr_t)));
@@ -56,6 +57,7 @@ AlgoManagerBase::AlgoManagerBase(ncclComm_t comm) : comm_(comm), memHandler_(com
 
   // For IPC, we can reuse the same mbox across barrier operations by
   // incrementing the barrierFlag.
+  TRACE(NCCL_ALLOC, "Cuda Alloc Size %ld pointer (cudaMalloc)", maxBlocks_ * comm_->nRanks * sizeof(uintptr_t));
   CUDACHECKIGNORE(cudaMalloc(
       &ipcBarrierMbox_d_,
       maxBlocks_ * comm_->nRanks * sizeof(uintptr_t)));
@@ -64,7 +66,9 @@ AlgoManagerBase::AlgoManagerBase(ncclComm_t comm) : comm_(comm), memHandler_(com
       0,
       maxBlocks_ * comm_->nRanks * sizeof(uintptr_t)));
 
+  TRACE(NCCL_ALLOC, "Cuda Alloc Size %ld pointer (cudaMalloc)", NCCL_DDA_TMPBUFF_SIZE);
   CUDACHECKIGNORE(cudaMalloc(&tmpbuff_d_, NCCL_DDA_TMPBUFF_SIZE));
+  TRACE(NCCL_ALLOC, "Cuda Alloc Size %ld pointer (cudaMalloc)", sizeof(DdaDeviceState) * comm_->nRanks);
   CUDACHECKIGNORE(
       cudaMalloc(&devStates_d_, sizeof(DdaDeviceState) * comm_->nRanks));
 

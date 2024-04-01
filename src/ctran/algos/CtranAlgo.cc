@@ -110,6 +110,7 @@ ncclResult_t CtranAlgo::initDevState() {
   }
 
   // Copy contents to device
+  TRACE(NCCL_ALLOC, "Cuda Alloc Size %ld pointer (cudaMalloc)", sizeof(CtranAlgoDeviceState));
   CUDACHECK(cudaMalloc(&this->devState_d, sizeof(CtranAlgoDeviceState)));
   CUDACHECK(cudaMemcpy(
       this->devState_d,
@@ -133,6 +134,7 @@ CtranAlgo::SharedResource::SharedResource(ncclComm* comm) {
       (sizeof(CtranAlgoDeviceBufState) + NCCL_CTRAN_SHARED_DEVBUF_SIZE) *
       (this->comm_->localRanks - 1);
 
+  TRACE(NCCL_ALLOC, "Cuda Alloc Size %ld pointer (cudaMalloc)", shmSize);
   CUDACHECKTHROW(cudaMalloc(&this->devShmPtr_, shmSize));
   CUDACHECKTHROW(
       cudaIpcGetMemHandle(&handles[this->comm_->localRank], this->devShmPtr_));

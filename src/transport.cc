@@ -40,7 +40,9 @@ static ncclResult_t selectTransport(struct ncclComm* comm, struct ncclTopoGraph*
     struct ncclTransportComm* transportComm = type == 1 ? &transport->send : &transport->recv;
     int ret = 0;
     NCCLCHECK(transport->canConnect(&ret, comm->topo, graph, myInfo, peerInfo));
+    TRACE(NCCL_INIT, "checking Channel %02d : %d -> %d transport: %s", channelId, myInfo->rank, peerInfo->rank, transport->name);
     if (ret) {
+      TRACE(NCCL_INIT, "can connect, Channel %02d : %d -> %d transport: %s", channelId, myInfo->rank, peerInfo->rank, transport->name);
       connector->transportComm = transportComm;
       NCCLCHECK(transportComm->setup(comm, graph, myInfo, peerInfo, connect, connector, channelId, connIndex));
       if (transportType) *transportType = t;

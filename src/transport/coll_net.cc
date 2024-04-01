@@ -157,6 +157,7 @@ static ncclResult_t sendSetup(struct ncclComm* comm, struct ncclTopoGraph* graph
   NCCLCHECK(ncclProxyConnect(comm, TRANSPORT_COLLNET, 1, tpProxyRank, &send->proxyConn));
   ncclAtomicRefCountIncrement(&comm->collNetSharedRes->refCount);
   req.collNet = comm->collNetSharedRes;
+  TRACE(NCCL_ALLOC, "calling ncclProxyCallBlocking size: %i, type: %i for rank: %i",  *((int*)&req), ncclProxyMsgSetup, tpProxyRank);
   NCCLCHECK(ncclProxyCallBlocking(comm, &send->proxyConn, ncclProxyMsgSetup, &req, sizeof(req), NULL, 0));
 
   INFO(NCCL_INIT|NCCL_NET,"CollNet %02d/%1d : %d [send] via COLLNET/%s/%d%s", channelId, connIndex, myInfo->rank, collNetName(comm), req.netDev,
@@ -180,6 +181,7 @@ static ncclResult_t recvSetup(struct ncclComm* comm, struct ncclTopoGraph* graph
   struct collNetRecvConnectInfo* info = (struct collNetRecvConnectInfo*) connectInfo;
   ncclAtomicRefCountIncrement(&comm->collNetSharedRes->refCount);
   req.collNet = comm->collNetSharedRes;
+  TRACE(NCCL_ALLOC, "calling ncclProxyCallBlocking size: %i, type: %i for rank: %i",  *((int*)&req), ncclProxyMsgSetup, tpProxyRank);
   NCCLCHECK(ncclProxyCallBlocking(comm, &recv->proxyConn, ncclProxyMsgSetup, &req, sizeof(req), &info->collNetHandle, sizeof(collNetHandle_t)));
 
   INFO(NCCL_INIT|NCCL_NET,"CollNet %02d/%1d : %d [receive] via COLLNET/%s/%d%s", channelId, connIndex, myInfo->rank, collNetName(comm), req.netDev,

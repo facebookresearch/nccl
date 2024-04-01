@@ -61,6 +61,7 @@ ncclResult_t ncclWinAllocShared(size_t size, ncclComm_t comm, ncclWin_t* win) {
 
   // TODO: use memory pool
   void *addr;
+  TRACE(NCCL_ALLOC, "Cuda Alloc Size %ld pointer (cudaMalloc)", size);
   CUDACHECK(cudaMalloc(&addr, size));
 
   // No need to open IPC for sinlge-process communicator

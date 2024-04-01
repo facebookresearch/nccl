@@ -218,6 +218,7 @@ static ncclResult_t sendSetup(struct ncclComm* comm, struct ncclTopoGraph* graph
   req.tpLocalRank = comm->topParentLocalRanks[localRank];
   req.tpRank = comm->topParentRanks[myInfo->rank];
   req.tpRemoteRank = comm->topParentRanks[peerInfo->rank];
+  TRACE(NCCL_ALLOC, "calling ncclProxyCallBlocking size: %i, type: %i for rank: %i, remote rank: %i",  *((int*)&req), ncclProxyMsgSetup, tpProxyRank, req.tpRemoteRank);
   NCCLCHECK(ncclProxyCallBlocking(comm, &send->proxyConn, ncclProxyMsgSetup, &req, sizeof(req), NULL, 0));
 
   if (proxyRank == myInfo->rank) {
@@ -256,6 +257,7 @@ static ncclResult_t recvSetup(struct ncclComm* comm, struct ncclTopoGraph* graph
   req.tpLocalRank = comm->topParentLocalRanks[localRank];
   req.tpRank = comm->topParentRanks[myInfo->rank];
   req.tpRemoteRank = comm->topParentRanks[peerInfo->rank];
+  TRACE(NCCL_ALLOC, "calling ncclProxyCallBlocking size: %i, type: %i for rank: %i, remote rank: %i",  *((int*)&req), ncclProxyMsgSetup, tpProxyRank, req.tpRemoteRank);
   NCCLCHECK(ncclProxyCallBlocking(comm, &recv->proxyConn, ncclProxyMsgSetup, &req, sizeof(req), connectInfo, sizeof(ncclNetHandle_t)));
   INFO(NCCL_INIT|NCCL_NET,"Channel %02d/%d : %d[%d] -> %d[%d] [receive] via NET/%s/%d%s%s", channelId, connIndex, peerInfo->rank, peerInfo->nvmlDev, myInfo->rank, myInfo->nvmlDev, comm->ncclNet->name, req.netDev,
       req.useGdr ? "/GDRDMA" : "", req.shared ? "/Shared" : "");
@@ -474,8 +476,10 @@ static ncclResult_t sharedBuffersInit(struct ncclProxyState* proxyState, int cud
 
   if (cuda && state->cudaBuff == NULL) {
     if (sameProcess == 0 || ncclCuMemEnable()) {
+      TRACE(NCCL_ALLOC, "calling sharedBuffersInit size: %i, nChannels: %i, chunk size: %i",  state->size, nChannels, proxyState->p2pChunkSize);
       NCCLCHECK(ncclP2pAllocateShareableBuffer(state->size, &state->ipcDesc, (void**)&state->cudaBuff));
     } else {
+      TRACE(NCCL_ALLOC, "calling sharedBuffersInit size: %i",  state->size);
       NCCLCHECK(ncclCudaCalloc(&state->cudaBuff, state->size));
     }
   }
@@ -647,6 +651,7 @@ static ncclResult_t sendProxyConnect(struct ncclProxyConnection* connection, str
     NCCLCHECK(sharedBuffersInit(
           proxyState, resources->useGdr, resources->tpLocalRank, 0, map->sameProcess, proxyState->p2pnChannels,
           &mapMem->gpuPtr, &mapMem->cpuPtr, &mapMem->size, &mapMem->ipcDesc));
+    TRACE(NCCL_ALLOC, "calling sharedBuffersInit, size was set to: %i",  mapMem->size);
     resources->buffSizes[NCCL_PROTO_SIMPLE] = mapMem->size;
 
     if (proxyState->allocP2pNetLLBuffers) {
@@ -785,6 +790,7 @@ static ncclResult_t recvProxyConnect(struct ncclProxyConnection* connection, str
     NCCLCHECK(sharedBuffersInit(
           proxyState, resources->useGdr, resources->tpLocalRank, 1, 1, proxyState->p2pnChannels,
           &mapMem->gpuPtr, &mapMem->cpuPtr, &mapMem->size, NULL));
+    TRACE(NCCL_ALLOC, "calling sharedBuffersInit, size was set to: %i",  mapMem->size);
     resources->buffSizes[NCCL_PROTO_SIMPLE] = mapMem->size;
     NCCL_NET_MAP_ADD_POINTER(map, 1, resources->useGdr, mapMem->size, buffs[NCCL_PROTO_SIMPLE]);
   }

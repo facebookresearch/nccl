@@ -45,7 +45,9 @@ ncclResult_t DdaMemHandler::exchangeMemHandles() {
   std::vector<ExchangedHandle> recvHandles(kNumRecvHandle);
   ExchangedHandle* sendBuff_d{nullptr};
   ExchangedHandle* recvBuff_d{nullptr};
+  TRACE(NCCL_ALLOC, "Cuda Alloc Size %ld pointer (cudaMalloc)", kSendSize);
   CUDACHECK(cudaMalloc(&sendBuff_d, kSendSize));
+  TRACE(NCCL_ALLOC, "Cuda Alloc Size %ld pointer (cudaMalloc)", kRecvSize);
   CUDACHECK(cudaMalloc(&recvBuff_d, kRecvSize));
 
   // fill up sendbuffs
