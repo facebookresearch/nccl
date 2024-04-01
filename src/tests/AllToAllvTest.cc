@@ -396,7 +396,7 @@ TEST_F(AllToAllvTest, OrigCanCopy16Mismatch) {
   unsetenv("NCCL_ALLTOALLV_ALGO");
 }
 
-TEST_F(AllToAllvTest, DISABLED_CtranReuseSharedBuffer) {
+TEST_F(AllToAllvTest, CtranReuseSharedBuffer) {
   setenv("NCCL_ALLTOALLV_ALGO", "ctran", 1);
   ncclCvarInit();
   runReuseSharedBuffer();

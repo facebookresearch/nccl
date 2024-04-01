@@ -56,10 +56,10 @@ waitStep(CtranAlgoDeviceBufState* state, int groupIdx, int val) {
 // in order to avoid race conditions. When a send and receive have mismatching
 // data types (one will have uint4 and the other will have T), each thread
 // must access only the shared memory that it would in the uint4 case.
-template <typename T>
+template <typename T1, typename T2>
 __device__ __forceinline__ void
-copy(T* dst, const T* src, size_t count, int groupIdx, int nGroups) {
-  int numElemsPerUint4 = sizeof(uint4) / sizeof(T);
+copy(T1* dst, const T2* src, size_t count, int groupIdx, int nGroups) {
+  int numElemsPerUint4 = sizeof(uint4) / sizeof(T1);
   int uint4BlockDim = blockDim.x * numElemsPerUint4;
   for (int i = 0; i < numElemsPerUint4; i++) {
     int offset = i*blockDim.x;
@@ -67,6 +67,19 @@ copy(T* dst, const T* src, size_t count, int groupIdx, int nGroups) {
     for (size_t idx = gtIdx; idx < count; idx += nGroups * uint4BlockDim) {
       dst[idx] = src[idx];
     }
+  }
+}
+
+// uint4 doesn't have copy constructor for uint4 = volatile uint4
+template <>
+__device__ __forceinline__ void
+copy<uint4, volatile uint4>(uint4* dst, const volatile uint4* src, size_t count, int groupIdx, int nGroups) {
+  const int gtIdx = blockDim.x * groupIdx + threadIdx.x;
+  for (size_t idx = gtIdx; idx < count; idx += nGroups * blockDim.x) {
+    dst[idx].x = src[idx].x;
+    dst[idx].y = src[idx].y;
+    dst[idx].z = src[idx].z;
+    dst[idx].w = src[idx].w;
   }
 }
 
@@ -122,7 +135,7 @@ __device__ __forceinline__ void multiStepsSend(
     // kernel and also previous step in the current kernel
     waitStep(bufState, groupIdx, CTRAN_ALGO_STEP_RESET);
     // P2P from local src to remote shared region
-    copy<T>(buf, srcPtr, stepCount, groupIdx, ngroups);
+    copy<T, T>(buf, srcPtr, stepCount, groupIdx, ngroups);
     setStep(bufState, groupIdx, step);
     offset += stepCount;
     step++;
@@ -142,6 +155,8 @@ __device__ __forceinline__ void multiStepsRecv(
     int ngroups) {
   size_t offset = 0;
   int step = 0;
+  // must be volatile so compiler doesn't reuse cached buf values
+  const volatile T* vbuf = reinterpret_cast<const volatile T*>(buf);
   while (offset < count) {
     size_t pendingCount = count - offset;
     size_t stepCount = pendingCount > bufCount ? bufCount : pendingCount;
@@ -149,7 +164,7 @@ __device__ __forceinline__ void multiStepsRecv(
 
     waitStep(bufState, groupIdx, step);
     // D2D from local shared region to local dst
-    copy<T>(dstPtr, buf, stepCount, groupIdx, ngroups);
+    copy<T, volatile T>(dstPtr, vbuf, stepCount, groupIdx, ngroups);
     resetStep(bufState, groupIdx, CTRAN_ALGO_STEP_RESET);
     offset += stepCount;
     step++;
