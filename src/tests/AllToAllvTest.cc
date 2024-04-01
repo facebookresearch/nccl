@@ -286,7 +286,7 @@ TEST_F(AllToAllvTest, Ctran) {
   unsetenv("NCCL_ALLTOALLV_ALGO");
 }
 
-TEST_F(AllToAllvTest, DISABLED_CtranCanCopy16Mismatch) {
+TEST_F(AllToAllvTest, CtranCanCopy16Mismatch) {
   setenv("NCCL_ALLTOALLV_ALGO", "ctran", 1);
   ncclCvarInit();
   runCanCopy16Mismatch();

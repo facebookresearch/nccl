@@ -52,12 +52,21 @@ waitStep(CtranAlgoDeviceBufState* state, int groupIdx, int val) {
   __syncthreads();
 }
 
+// Thread blocks with the same groupIdx must own the same area of shared memory
+// in order to avoid race conditions. When a send and receive have mismatching
+// data types (one will have uint4 and the other will have T), each thread
+// must access only the shared memory that it would in the uint4 case.
 template <typename T>
 __device__ __forceinline__ void
 copy(T* dst, const T* src, size_t count, int groupIdx, int nGroups) {
-  const int gtIdx = blockDim.x * groupIdx + threadIdx.x;
-  for (size_t idx = gtIdx; idx < count; idx += nGroups * blockDim.x) {
-    dst[idx] = src[idx];
+  int numElemsPerUint4 = sizeof(uint4) / sizeof(T);
+  int uint4BlockDim = blockDim.x * numElemsPerUint4;
+  for (int i = 0; i < numElemsPerUint4; i++) {
+    int offset = i*blockDim.x;
+    const int gtIdx = uint4BlockDim * groupIdx + threadIdx.x + offset;
+    for (size_t idx = gtIdx; idx < count; idx += nGroups * uint4BlockDim) {
+      dst[idx] = src[idx];
+    }
   }
 }
 
