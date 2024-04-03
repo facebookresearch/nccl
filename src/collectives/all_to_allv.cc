@@ -3,6 +3,26 @@
 #include "comm.h"
 #include "nccl.h"
 
+inline ncclResult_t checkBuffCountsAndPointers(const void* buff, const size_t* counts, const char* buffName, ncclComm_t comm, const char* funcName) {
+  if(counts == NULL) {
+    WARN("Counts pointer is NULL.");
+    return ncclInvalidArgument;
+  }
+
+  if(buff == NULL) {
+    for (int i = 0; i < comm->nRanks; i++) {
+      if(counts[i] != 0) {
+        WARN("Found NULL %s with nonzero counts.", buffName);
+        return ncclInvalidArgument;
+      }
+    }
+  }
+  else {
+    NCCLCHECK(CudaPtrCheck(buff, comm, buffName, funcName));
+  }
+  return ncclSuccess;
+}
+
 NCCL_API(
     ncclResult_t,
     ncclAllToAllv,
@@ -25,8 +45,8 @@ ncclResult_t ncclAllToAllv(
     ncclDataType_t datatype,
     ncclComm_t comm,
     cudaStream_t stream) {
-  NCCLCHECK(CudaPtrCheck(sendbuff, comm, "sendbuff", "ncclAllToAllv"));
-  NCCLCHECK(CudaPtrCheck(recvbuff, comm, "recvbuff", "ncclAllToAllv"));
+  NCCLCHECK(checkBuffCountsAndPointers(sendbuff, sendcounts, "sendbuff", comm, "ncclAllToAllv"));
+  NCCLCHECK(checkBuffCountsAndPointers(recvbuff, recvcounts, "recvbuff", comm, "ncclAllToAllv"));
   if (sendbuff == recvbuff) {
     WARN(
         "Found sendbuff %p == recvbuff %p. In-place ncclAllToAllv is not supported.",

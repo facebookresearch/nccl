@@ -171,6 +171,85 @@ class AllToAllvTest : public ::testing::Test {
 #endif
   }
 
+  void runZeroByte() {
+#ifdef NCCL_ALLTOALLV_SUPPORTED
+    if(this->globalRank > 1){
+      return;
+    }
+
+    // prepare alltoallv arguments
+    std::vector<size_t> sendCounts(this->numRanks);
+    std::vector<size_t> sendDispls(this->numRanks);
+    std::vector<size_t> recvCounts(this->numRanks);
+    std::vector<size_t> recvDispls(this->numRanks);
+    if(this->globalRank == 0){
+      sendCounts[0] = 60000776;
+      sendCounts[1] = 0;
+      recvCounts[0] = 60000776;
+      recvCounts[1] = 60000316;
+    }
+    else if(this->globalRank == 1){
+      sendCounts[0] = 60000316;
+      sendCounts[1] = 0;
+      recvCounts[0] = 0;
+      recvCounts[1] = 0;
+    }
+    sendDispls[0] = 0;
+    recvDispls[0] = 0;
+    for (int i = 1; i < 2; i++) {
+      sendDispls[i] = sendDispls[i-1] + sendCounts[i-1];
+      recvDispls[i] = recvDispls[i-1] + recvCounts[i-1];
+    }
+
+    int sendCount = 0;
+    int recvCount = 0;
+    for (int i = 0; i < 2; i++) {
+      sendCount += sendCounts[i];
+      recvCount += recvCounts[i];
+    }
+
+    // create and register buffers
+    int *sendBuf = nullptr, *recvBuf = nullptr;
+    void *sendHandle = nullptr, *recvHandle = nullptr;
+
+    CUDACHECK_TEST(cudaMalloc(&sendBuf, sendCount * sizeof(int)));
+    CUDACHECK_TEST(cudaMalloc(&recvBuf, recvCount * sizeof(int)));
+    if(this->localRank ==1){
+      ASSERT_EQ(recvBuf, nullptr);
+    }
+
+    int expectedVal = 32;
+    assignChunkValue(sendBuf, sendCount, expectedVal);
+    assignChunkValue(recvBuf, recvCount, -1);
+
+    // run alltoallv
+    auto res = ncclAllToAllv(
+        sendBuf,
+        sendCounts.data(),
+        sendDispls.data(),
+        recvBuf,
+        recvCounts.data(),
+        recvDispls.data(),
+        ncclInt,
+        comm,
+        stream);
+    ASSERT_EQ(res, ncclSuccess);
+    CUDACHECK_TEST(cudaStreamSynchronize(stream));
+
+    for (int r = 0; r < 2; r++) {
+      int expectedVal = 32;
+      int errs =
+          checkChunkValue(recvBuf + recvDispls[r], recvCounts[r], expectedVal);
+      EXPECT_EQ(errs, 0) << "rank " << this->globalRank << " checked chunk "
+                         << r << " at " << recvBuf + recvDispls[r] << " with "
+                         << errs << " errors";
+    }
+
+    CUDACHECK_TEST(cudaFree(sendBuf));
+    CUDACHECK_TEST(cudaFree(recvBuf));
+#endif
+  }
+
   void runCanCopy16Mismatch(bool registFlag = false) {
 #ifdef NCCL_ALLTOALLV_SUPPORTED
     if(this->numRanks < 4){
@@ -465,6 +544,20 @@ TEST_F(AllToAllvTest, InvalidRecvbuf) {
   ASSERT_EQ(res, ncclInvalidArgument);
   CUDACHECK_TEST(cudaFree(buf));
 #endif
+}
+
+TEST_F(AllToAllvTest, CtranZeroByte) {
+  setenv("NCCL_ALLTOALLV_ALGO", "ctran", 1);
+  ncclCvarInit();
+  runZeroByte();
+  unsetenv("NCCL_ALLTOALLV_ALGO");
+}
+
+TEST_F(AllToAllvTest, OrigZeroByte) {
+  setenv("NCCL_ALLTOALLV_ALGO", "orig", 1);
+  ncclCvarInit();
+  runZeroByte();
+  unsetenv("NCCL_ALLTOALLV_ALGO");
 }
 
 TEST_F(AllToAllvTest, InvalidInPlace) {
