@@ -1,8 +1,9 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "Logger.h"
-#include "nccl_cvars.h"
 
+#include <cstdio>
+#include <mutex>
 #include <stdexcept>
 
 /*
@@ -39,17 +40,14 @@ void NcclLogger::log(const std::string& msg, FILE* ncclDebugFile) noexcept {
 }
 
 void NcclLogger::init(FILE* ncclDebugFile) {
-  if (NCCL_LOGGER_MODE == NCCL_LOGGER_MODE::async) {
-    singleton_ = std::unique_ptr<NcclLogger>(new NcclLogger(ncclDebugFile));
-  }
+  singleton_ = std::unique_ptr<NcclLogger>(new NcclLogger(ncclDebugFile));
 }
 
 NcclLogger::NcclLogger(FILE* ncclDebugFile)
-    : mergedMsgQueue_(new std::queue<std::string>()) {
+    : debugFile(ncclDebugFile) {
   if (!ncclDebugFile) {
     throw std::runtime_error("Failed to open debug file");
   }
-  debugFile = ncclDebugFile;
 
   writeToFile(
       "NCCL Logger: instantiate the Asynchronous NCCL message logging.\n");

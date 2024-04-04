@@ -3,7 +3,6 @@
 #ifndef NCCL_LOGGER_H
 #define NCCL_LOGGER_H
 
-#include <nccl_cvars.h>
 #include <atomic>
 #include <condition_variable>
 #include <cstdio>
@@ -15,12 +14,12 @@
 
 // Friend class for testing. This class is used to access the internal status of
 // NcclLogger.
-class NcclLoggerChecker;
+class NcclLoggerTest;
 
 class NcclLogger {
  public:
   // Friend class for testing
-  friend class NcclLoggerChecker;
+  friend class NcclLoggerTest;
 
   static void init(FILE* ncclDebugFile);
 
@@ -41,7 +40,8 @@ class NcclLogger {
   static std::unique_ptr<NcclLogger> singleton_;
 
   std::thread loggerThread_;
-  std::unique_ptr<std::queue<std::string>> mergedMsgQueue_;
+  std::unique_ptr<std::queue<std::string>> mergedMsgQueue_ =
+      std::make_unique<std::queue<std::string>>();
   std::mutex mutex_;
   std::condition_variable cv_;
   FILE* debugFile;
