@@ -11,7 +11,7 @@
 #include <sys/syscall.h>
 #include "param.h"
 #include "nccl_cvars.h"
-#include "logger.h"
+#include "Logger.h"
 
 /*
 === BEGIN_NCCL_CVAR_INFO_BLOCK ===

@@ -35,12 +35,13 @@ LIBSRCFILES += algorithms/AlgoDirector.cc \
                algorithms/allreduce/AlgoAllReduceDdaNvsTreeThreaded.cc \
                algorithms/allreduce/AlgoAllReduceDdaNvsScatGatIpc.cc \
                algorithms/allreduce/AlgoManagerAllReduce.cc
+LIBSRCFILES += logger/Logger.cc
 LIBSRCFILES += window.cc
 LIBSRCFILES += collectives/AllReduceSparseBlock.cc
 
 INCLUDES := -Iinclude
 INCLUDES += -Ialgorithms -Ialgorithms/allreduce -Idevice
-INCLUDES += -Ictran -Ictran/utils -Ictran/backends/ib -Ictran/mapper -Ictran/gpe -Ictran/algos
+INCLUDES += -Ictran -Ictran/utils -Ictran/backends/ib -Ictran/mapper -Ictran/gpe -Ictran/algos -Ilogger/
 INCLUDES += -Ictran/algos/AllToAll
 
 ##### lib files

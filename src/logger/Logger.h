@@ -11,10 +11,16 @@
 #include <queue>
 #include <string>
 #include <thread>
-#include "nccl_cvars.h"
+
+// Friend class for testing. This class is used to access the internal status of
+// NcclLogger.
+class NcclLoggerTest;
 
 class NcclLogger {
  public:
+  // Friend class for testing
+  friend class NcclLoggerTest;
+
   static void init(FILE* ncclDebugFile);
 
   static void log(const std::string& msg, FILE* ncclDebugFile) noexcept;
@@ -31,15 +37,11 @@ class NcclLogger {
 
   NcclLogger(FILE*);
 
-  // Ideally ncclDebugInit (the only function that is supposed to call NcclLogger::init)
-  // is already protected to ensure it can only be called once, so we don't need to do
-  // it ourselves. But just trying to be super confident that we will never initialize
-  // the singleton twice.
-  static std::atomic_flag singletonInitialized_;
   static std::unique_ptr<NcclLogger> singleton_;
 
   std::thread loggerThread_;
-  std::unique_ptr<std::queue<std::string>> mergedMsgQueue_;
+  std::unique_ptr<std::queue<std::string>> mergedMsgQueue_ =
+      std::make_unique<std::queue<std::string>>();
   std::mutex mutex_;
   std::condition_variable cv_;
   FILE* debugFile;
