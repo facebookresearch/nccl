@@ -7,6 +7,8 @@
 #ifndef NCCL_PROXY_H_
 #define NCCL_PROXY_H_
 
+#include <atomic>
+
 #include "devcomm.h"
 #include "info.h"
 #include "socket.h"
@@ -207,6 +209,7 @@ struct ncclProxyState {
   struct ncclSocket* listenSock;
   int stop;
   CUcontext cudaCtx;
+  std::atomic<ncclResult_t> asyncResult = ncclSuccess;
 
   // Used by main thread
   union ncclSocketAddress* peerAddresses;
