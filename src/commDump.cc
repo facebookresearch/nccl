@@ -37,12 +37,12 @@ static void dumpCommInfo(
   map["localRank"] = std::to_string(comm->localRank);
   map["node"] = std::to_string(comm->node);
 
-  // common metadata is dumped only on rank 0
-  if (comm->rank == 0) {
-    map["nRanks"] = std::to_string(comm->nRanks);
-    map["localRanks"] = std::to_string(comm->localRanks);
-    map["nNodes"] = std::to_string(comm->nNodes);
+  map["nRanks"] = std::to_string(comm->nRanks);
+  map["localRanks"] = std::to_string(comm->localRanks);
+  map["nNodes"] = std::to_string(comm->nNodes);
 
+  // Still only dump rings on rank 0 because it is a large amount of data
+  if (comm->rank == 0) {
     // TODO: dump tree topology
     map["rings"] = dumpRings(comm);
   }

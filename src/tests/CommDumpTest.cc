@@ -92,14 +92,15 @@ TEST_F(CommDumpTest, SingleComm) {
   EXPECT_EQ(dump.count("node"), 1);
   EXPECT_EQ(dump["node"], std::to_string(this->comm->node));
 
+  EXPECT_EQ(dump.count("nRanks"), 1);
+  EXPECT_EQ(dump["nRanks"], std::to_string(this->comm->nRanks));
+  EXPECT_EQ(dump.count("localRanks"), 1);
+  EXPECT_EQ(dump["localRanks"], std::to_string(this->comm->localRanks));
+  EXPECT_EQ(dump.count("nNodes"), 1);
+  EXPECT_EQ(dump["nNodes"], std::to_string(this->comm->nNodes));
+
   // common metadata is dumped only on rank 0
   if (this->comm->rank == 0) {
-    EXPECT_EQ(dump.count("nRanks"), 1);
-    EXPECT_EQ(dump["nRanks"], std::to_string(this->comm->nRanks));
-    EXPECT_EQ(dump.count("localRanks"), 1);
-    EXPECT_EQ(dump["localRanks"], std::to_string(this->comm->localRanks));
-    EXPECT_EQ(dump.count("nNodes"), 1);
-    EXPECT_EQ(dump["nNodes"], std::to_string(this->comm->nNodes));
     EXPECT_EQ(dump.count("rings"), 1);
     if (dump.count("rings")) {
       Json::Value ringsObjs;
