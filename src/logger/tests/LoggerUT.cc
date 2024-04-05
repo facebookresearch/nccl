@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "Logger.h"
+#include "TestUtils.h"
 
 const static std::string kTestStr = "test1";
 constexpr size_t kBufferSize = 4096;
@@ -21,7 +22,7 @@ class NcclLoggerTest : public ::testing::Test {
  public:
   NcclLoggerTest() = default;
   void SetUp() override {
-    this->testFilePath = getTestFilePath();
+    this->testFilePath = getTestFilePath("loggertest", ".log");
     this->logFile = fopen(this->testFilePath.c_str(), "w");
     if (this->logFile != nullptr) {
       setbuf(this->logFile, nullptr); // disable buffering to align with NCCL
@@ -50,14 +51,6 @@ class NcclLoggerTest : public ::testing::Test {
     auto res = fclose(this->logFile) == 0;
     this->logFile = nullptr;
     return res;
-  }
-
-  std::string getTestFilePath() {
-    auto tmpPath = std::filesystem::temp_directory_path();
-    auto threadHash = std::hash<std::thread::id>{}(std::this_thread::get_id());
-    auto objHash = std::hash<void *>{}(static_cast<void *>(this));
-    tmpPath /= "loggertest" + std::to_string(threadHash^objHash);
-    return tmpPath.string();
   }
 
   std::string readLogs() {

@@ -3,6 +3,10 @@
 #ifndef TESTS_COMMON_CUH_
 #define TESTS_COMMON_CUH_
 
+/**
+ * Defines common utilities for tests that depends on CUDA or NCCL
+ */
+
 #include "cuda.h"
 #include "mpi.h"
 #include <tuple>
