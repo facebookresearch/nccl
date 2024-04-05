@@ -8,7 +8,7 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "CtranChecks.h"
+#include "ExtChecks.h"
 #include "CtranIbBase.h"
 #include "CtranIbImpl.h"
 #include "CtranIbVc.h"

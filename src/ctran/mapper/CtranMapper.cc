@@ -9,7 +9,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
-#include "CtranChecks.h"
+#include "ExtChecks.h"
 #include "CtranMapperImpl.h"
 #include "CtranTopoFile.h"
 #include "FbInternal.h"

@@ -7,7 +7,7 @@
 #include <new>
 #include <stdexcept>
 #include <unordered_map>
-#include "CtranChecks.h"
+#include "ExtChecks.h"
 #include "CtranGpe.h"
 #include "CtranGpeKernel.h"
 #include "checks.h"
