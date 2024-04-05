@@ -16,6 +16,7 @@
 #include "enqueue.h"
 #include "graph.h"
 #include "argcheck.h"
+#include "CollTrace.h"
 #include "tuner.h"
 #include <fcntl.h>
 #include <string.h>
@@ -1755,6 +1756,8 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
 
   NCCLCHECKGOTO(ctranInit(comm), res, fail);
 
+  NCCLCHECKGOTO(collTraceInit(comm), res, fail);
+
   NCCLCHECKGOTO(ncclCommInitWorld(comm), res, fail);
 
   timerDeltaMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - timerBegin).count();
@@ -2157,6 +2160,8 @@ static ncclResult_t commDestroySync(struct ncclAsyncJob* job_) {
   int savedDevice;
   int commDevice = comm->cudaDev;
   ncclResult_t ret = ncclSuccess;
+
+  NCCLCHECKGOTO(collTraceDestroy(comm), ret, fail);
 
   NCCLCHECKGOTO(ctranDestroy(comm), ret, fail);
 

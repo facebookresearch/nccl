@@ -103,6 +103,7 @@ inline ncclResult_t ncclInfoSetDerived(struct ncclInfo* info, int nRanks) {
 struct ncclTaskColl {
   struct ncclTaskColl* next;
   ncclFunc_t func;
+  const char* opName;
   void const* sendbuff;
   void* recvbuff;
   size_t count;

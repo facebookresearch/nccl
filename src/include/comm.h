@@ -17,6 +17,7 @@
 #include "register.h"
 #include "AlgoDirector.h"
 #include "Ctran.h"
+#include "CollTrace.h"
 
 #if CUDART_VERSION < 9000
 struct cudaLaunchParams {
@@ -174,6 +175,10 @@ struct ncclKernelPlan {
 
   struct ncclComm* comm;
   struct ncclKernelPlan* next;
+  struct ncclInfo aggInfo;
+  // used for collTrace to track p2p submitted in current plan
+  size_t nSendBytes;
+  size_t nRecvBytes;
 
   bool persistent; // aka captured in a graph
   bool kernelSpecialized;
@@ -376,6 +381,8 @@ struct ncclComm {
 
   std::unique_ptr<nccl::algorithms::AlgoDirector> algoDirector{nullptr};
   std::unique_ptr<Ctran> ctran{nullptr};
+
+  std::unique_ptr<CollTrace> collTrace{nullptr};
 };
 
 enum ncclLaunchMode {

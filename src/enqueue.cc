@@ -13,6 +13,7 @@
 #include "cudawrap.h"
 #include "transport.h"
 #include "nccl_cvars.h"
+#include "CollTrace.h"
 
 #include <cassert>
 #include <cstring> // std::memcpy
@@ -600,6 +601,7 @@ static ncclResult_t addP2pToPlan(
   // with channel->nWork equal to one plus the work index this p2p settled in.
   proxyOp.opCount = uint64_t(plan->channels[channelId].nWork)<<1 | 1;
   NCCLCHECK(addProxyOpIfNeeded(comm, plan, &proxyOp));
+  COLLTRACE_P2P_APPEND(comm, plan, info);
   return ncclSuccess;
 }
 
@@ -754,6 +756,7 @@ exit:
    struct ncclTasks* tasks = &comm->tasks;
   size_t totalCBDBytes = tasks->workBytesTotal;
   struct ncclInfo* collInfo;
+  bool firstColl = true;
 
   if (!ncclIntruQueueEmpty(&tasks->collQueue)) {
     int usableChannels = 0, accChannels = 0;
@@ -786,6 +789,16 @@ exit:
         NCCLCHECK(getChannnelThreadInfo(aggInfo));
         NCCLCHECK(computeCollWorkFunc(aggInfo));
         NCCLCHECK(getPatternInfo(aggInfo));
+
+        // For CollTrace logging metadata. Currently we only support logging
+        // the first collective in a group.
+        // TODO: Add warning about more than one collective in a group
+        if (firstColl) {
+          // Fixme: Change the Macro to a proper function
+          struct ncclInfo& aggInfoRef = *aggInfo;
+          COLLTRACE_INFO_COPY(comm, plan, aggInfoRef);
+          firstColl = false;
+        }
 
         // Try to assign algo and proto to all possible collectives
         nextInfo = collInfo;
@@ -1354,6 +1367,8 @@ ncclResult_t ncclLaunchKernel(struct ncclComm* comm, struct ncclKernelPlan* plan
   size_t smem = ncclShmemDynamicSize(comm->cudaArch);
   void *args[3] = {&comm->devComm, &plan->channelMask, &plan->workHead};
 
+  COLLTRACE_ACQUIRE_EVENT(comm, plan);
+
   #if CUDART_VERSION >= 11080
   int driverVersion;
   NCCLCHECK(ncclCudaDriverVersion(&driverVersion));
@@ -1400,12 +1415,16 @@ ncclResult_t ncclLaunchKernel(struct ncclComm* comm, struct ncclKernelPlan* plan
     launchConfig.numAttrs = attrs;
     launchConfig.stream = launchStream;
 
+    COLLTRACE_RECORD_START_EVENT(comm, launchStream);
     CUDACHECK(cudaLaunchKernelExC(&launchConfig, fn, args));
+    COLLTRACE_RECORD_END_EVENT(comm, plan, launchStream);
     return ncclSuccess;
   }
   #endif
   // Standard kernel launch
+  COLLTRACE_RECORD_START_EVENT(comm, launchStream);
   CUDACHECK(cudaLaunchKernel(fn, grid, block, args, smem, launchStream));
+  COLLTRACE_RECORD_END_EVENT(comm, plan, launchStream);
   return ncclSuccess;
 }
 

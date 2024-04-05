@@ -121,6 +121,35 @@ Description:
 Type: int64_t
 Default: 2
 
+NCCL_COLLTRACE
+Description:
+    Enable collective trace collection by leveraging cuda events
+    and a background thread. Valid options are comma separated list
+    of the following features. Leave empty to disable all features.
+    verbose - print every completed event as NCCL INFO log. Mostly for debug.
+    trace - Just enable collective trace.
+    file    - dump traced events to file at communicator destory. Also see
+           NCCL_COLLTRACE_DIR.
+    online_tuning - enable online tuning
+    (Other FB internal featuers are not listed)
+Type: stringlist
+Default: None
+
+NCCL_COLLTRACE_DIR
+Description:
+    Directory for CollTrace to dump.
+    Can be either local or FB internal remote URL.
+Type: string
+Default: 
+
+NCCL_COLLTRACE_RECORD_MAX
+Description:
+    Maximum amount of past collectives CollTrace will record.
+    If the amount of collective exceeds this value, the oldest one will be
+    dropped. Set the value to -1 will make CollTrace record all collectives.
+Type: int
+Default: 20
+
 NCCL_COMM_BLOCKING
 Description:
     The NCCL_COMM_BLOCKING variable controls whether NCCL calls are

@@ -338,6 +338,81 @@ TEST_F(CvarTest, NCCL_COLLNET_NODE_THRESHOLD_default_value) {
   EXPECT_EQ(NCCL_COLLNET_NODE_THRESHOLD, 2);
 }
 
+TEST_F(CvarTest, NCCL_COLLTRACE_valuelist_0) {
+  setenv("NCCL_COLLTRACE", "val1,val2,val3", 1);
+  std::vector<std::string> vals{"val1","val2","val3"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_COLLTRACE);
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_valuelist_1) {
+  setenv("NCCL_COLLTRACE", "val1:1,val2:2,val3:3", 1);
+  std::vector<std::string> vals{"val1:1","val2:2","val3:3"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_COLLTRACE);
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_valuelist_2) {
+  setenv("NCCL_COLLTRACE", "val", 1);
+  std::vector<std::string> vals{"val"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_COLLTRACE);
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_valuelist_3) {
+  setenv("NCCL_COLLTRACE", "val1, val_w_space  ", 1);
+  std::vector<std::string> vals{"val1","val_w_space"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_COLLTRACE);
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_default_value) {
+  testDefaultValue("NCCL_COLLTRACE");
+  EXPECT_EQ(NCCL_COLLTRACE.size(), 0);
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_warn_dup_val) {
+  setenv("NCCL_COLLTRACE", "dummy,dummy", 1);
+  testWarn("NCCL_COLLTRACE", "Duplicate token");
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_DIR_value_0) {
+  setenv("NCCL_COLLTRACE_DIR", "val1", 1);
+  ncclCvarInit();
+  EXPECT_EQ(NCCL_COLLTRACE_DIR, "val1");
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_DIR_value_1) {
+  setenv("NCCL_COLLTRACE_DIR", "  val2_with_space   ", 1);
+  ncclCvarInit();
+  EXPECT_EQ(NCCL_COLLTRACE_DIR, "val2_with_space");
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_RECORD_MAX_value_0) {
+  testNumValue<int>("NCCL_COLLTRACE_RECORD_MAX", 0);
+  EXPECT_EQ(NCCL_COLLTRACE_RECORD_MAX, 0);
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_RECORD_MAX_value_1) {
+  testNumValue<int>("NCCL_COLLTRACE_RECORD_MAX", 9999);
+  EXPECT_EQ(NCCL_COLLTRACE_RECORD_MAX, 9999);
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_RECORD_MAX_value_2) {
+  testNumValue<int>("NCCL_COLLTRACE_RECORD_MAX", std::numeric_limits<int>::max());
+  EXPECT_EQ(NCCL_COLLTRACE_RECORD_MAX, std::numeric_limits<int>::max());
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_RECORD_MAX_value_3) {
+  testNumValue<int>("NCCL_COLLTRACE_RECORD_MAX", std::numeric_limits<int>::min());
+  EXPECT_EQ(NCCL_COLLTRACE_RECORD_MAX, std::numeric_limits<int>::min());
+}
+
+TEST_F(CvarTest, NCCL_COLLTRACE_RECORD_MAX_default_value) {
+  testDefaultValue("NCCL_COLLTRACE_RECORD_MAX");
+  EXPECT_EQ(NCCL_COLLTRACE_RECORD_MAX, 20);
+}
+
 TEST_F(CvarTest, NCCL_COMM_BLOCKING_value_0) {
   testNumValue<int64_t>("NCCL_COMM_BLOCKING", 0);
   EXPECT_EQ(NCCL_COMM_BLOCKING, 0);
