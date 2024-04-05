@@ -81,6 +81,56 @@ DECL_TYPED_KERNS(double);
   }                                                 \
 } while(0)
 
+// Convenient RAII classes to simplify teardown of tests.
+
+/**
+ * Very thin RAII wrapper for ncclComm_t. The class is designed to be used in
+ * the same way ncclComm_t to be used, but handle ncclCommDestroy automatically
+ * in the destruction of the object. Sample usage:
+ * NcclCommRAII comm{globalRank, numRanks, devId} // Init
+ * func(comm)       // Pass to other functions as ncclComm_t
+ * comm->proxyState // Dereference as if it is ncclComm_t
+ */
+ncclComm_t createNcclComm(int globalRank, int numRanks, int devId);
+class NcclCommRAII {
+  public:
+    NcclCommRAII(int globalRank, int numRanks, int localRank) {
+      comm_ = createNcclComm(globalRank, numRanks, localRank);
+    }
+
+    ncclComm& operator*() { return *comm_; }
+
+    ncclComm_t operator->() { return comm_; }
+
+    operator ncclComm_t() { return comm_; }
+
+    ~NcclCommRAII() {
+      NCCLCHECK_TEST(ncclCommDestroy(comm_));
+    }
+
+  private:
+    ncclComm_t comm_;
+    bool destroyed_ = false;
+};
+
+// Assign a new value for environment variable during one test, and change the
+// value back at the end of the test.
+template <typename T>
+class EnvRAII {
+ public:
+  EnvRAII(T& envVar, T newValue) : oldValue_(envVar), envVar_(envVar) {
+    envVar_ = newValue;
+  }
+
+  ~EnvRAII() {
+    envVar_ = oldValue_;
+  }
+
+ private:
+  T oldValue_;
+  T& envVar_;
+};
+
 void initializeMpi(int argc, char **argv) {
   //initializing MPI
   MPICHECK_TEST(MPI_Init(&argc, &argv));
