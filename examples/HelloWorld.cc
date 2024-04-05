@@ -23,6 +23,12 @@ int main(int argc, char* argv[]) {
   NCCLCHECK(ncclAllReduce(
       (const void*)userBuff, userBuff, count, ncclInt, ncclSum, comm, stream));
 
+#ifdef NCCL_COMM_GET_UNIQUE_HASH
+  uint64_t ncclCommHash;
+  NCCLCHECK(ncclCommGetUniqueHash(comm, &ncclCommHash));
+  printf("ncclCommHash %lu\n", ncclCommHash);
+#endif
+
   CUDACHECK(cudaFree(userBuff));
   CUDACHECK(cudaSetDevice(localRank));
   CUDACHECK(cudaStreamDestroy(stream));

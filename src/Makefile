@@ -37,6 +37,7 @@ LIBSRCFILES += algorithms/AlgoDirector.cc \
                algorithms/allreduce/AlgoManagerAllReduce.cc
 LIBSRCFILES += logger/Logger.cc
 LIBSRCFILES += window.cc
+LIBSRCFILES += commHash.cc
 LIBSRCFILES += collectives/AllReduceSparseBlock.cc
 
 INCLUDES := -Iinclude

@@ -33,6 +33,8 @@ extern "C" {
 #define NCCL_REGISTRATION_SUPPORTED
 #define NCCL_ALLTOALLV_SUPPORTED
 #define NCCL_ALLTOALL_SUPPORTED
+#define NCCL_COMM_GET_UNIQUE_HASH
+
 /* Opaque handle to communicator */
 typedef struct ncclComm* ncclComm_t;
 #define NCCL_COMM_NULL NULL
@@ -564,6 +566,12 @@ ncclResult_t pncclWinSharedQuery(int rank, ncclComm_t comm, ncclWin_t win, void 
  */
 ncclResult_t  ncclWinFree(ncclComm_t comm, ncclWin_t win);
 ncclResult_t pncclWinFree(ncclComm_t comm, ncclWin_t win);
+
+/* Return the unique hash of the communicator.
+ * For all ranks in a given communicator, this hash will be the same.
+ */
+ncclResult_t  ncclCommGetUniqueHash(ncclComm_t comm, uint64_t* uniqueHash);
+ncclResult_t  pncclCommGetUniqueHash(ncclComm_t comm, uint64_t* uniqueHash);
 
 #ifdef __cplusplus
 } // end extern "C"
