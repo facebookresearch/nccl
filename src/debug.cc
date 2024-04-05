@@ -203,6 +203,12 @@ void ncclDebugLog(ncclDebugLogLevel level, unsigned long flags, const char *file
   if (__atomic_load_n(&ncclDebugLevel, __ATOMIC_ACQUIRE) == -1) ncclDebugInit();
   if (ncclDebugNoWarn != 0 && level == NCCL_LOG_WARN) { level = NCCL_LOG_INFO; flags = ncclDebugNoWarn; }
 
+  size_t logLen = 0;
+  va_list vargs;
+  va_start(vargs, fmt);
+  logLen += std::vsnprintf(nullptr, 0, fmt, vargs);
+  va_end(vargs);
+
   // Save the last error (WARN) as a human readable string
   if (level == NCCL_LOG_WARN) {
     pthread_mutex_lock(&ncclDebugLock);
@@ -226,35 +232,48 @@ void ncclDebugLog(ncclDebugLogLevel level, unsigned long flags, const char *file
     cudaGetDevice(&cudaDev);
   }
 
-  char buffer[1024];
-  size_t len = 0;
+  std::stringstream logStream;
   if (level == NCCL_LOG_WARN) {
-    len = snprintf(buffer, sizeof(buffer), "\n%s %s:%d:%d [%d][%s] %s:%d NCCL WARN ",
-                   getTime().c_str(), hostname, pid, tid, cudaDev, myThreadName, filefunc, line);
+    // \n%s %s:%d:%d [%d][%s] %s:%d NCCL WARN
+    logStream << "\n" << getTime().c_str() << " " << hostname << ":" << pid << ":"
+              << tid << " [" << cudaDev << "][" << myThreadName << "]"
+              << filefunc << ":" << line << " NCCL WARN ";
   } else if (level == NCCL_LOG_INFO) {
-    len = snprintf(buffer, sizeof(buffer), "%s %s:%d:%d [%d][%s] NCCL INFO ", getTime().c_str(), hostname, pid, tid, cudaDev, myThreadName);
+    // %s %s:%d:%d [%d][%s] NCCL INFO
+    logStream << getTime().c_str() << " " << hostname << ":" << pid << ":"
+              << tid << " [" << cudaDev << "][" << myThreadName << "]"
+              << " NCCL INFO ";
   } else if (level == NCCL_LOG_TRACE && flags == NCCL_CALL) {
-    len = snprintf(buffer, sizeof(buffer), "%s %s:%d:%d [%s] NCCL CALL ", getTime().c_str(), hostname, pid, tid, myThreadName);
+    // "%s %s:%d:%d [%s] NCCL CALL "
+    logStream << getTime().c_str() << " " << hostname << ":" << pid << ":"
+              << tid << " [" << cudaDev << "][" << myThreadName << "]"
+              << " NCCL CALL ";
   } else if (level == NCCL_LOG_TRACE) {
     auto delta = std::chrono::steady_clock::now() - ncclEpoch;
     double timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(delta).count()*1000;
-    len = snprintf(buffer, sizeof(buffer), "%s %s:%d:%d [%d][%s] %f %s:%d NCCL TRACE ",
-                   getTime().c_str(), hostname, pid, tid, cudaDev, myThreadName, timestamp, filefunc, line);
+    // "%s %s:%d:%d [%d][%s] %f %s:%d NCCL TRACE "
+    logStream << getTime().c_str() << " " << hostname << ":" << pid << ":"
+              << tid << " [" << cudaDev << "][" << myThreadName << "] "
+              << timestamp << " " << filefunc << ":" << line << " NCCL TRACE ";
   }
 
-  if (len) {
+  if (logStream.str().size() > 0) {
+    std::vector<char> buffer(logLen + 1); // +1 for null terminator
     va_list vargs;
     va_start(vargs, fmt);
-    len += vsnprintf(buffer+len, sizeof(buffer)-len, fmt, vargs);
+    // vsnprintf copy at most buf_size - 1 characters
+    std::vsnprintf(buffer.data(), buffer.size(), fmt, vargs);
     va_end(vargs);
-    buffer[len++] = '\n';
+    logStream << buffer.data() << "\n";
 
-    NcclLogger::log(std::string(buffer, len), ncclDebugFile);
+    auto logStr = logStream.str();
+    // logging to specified stdout/stderr/file
+    NcclLogger::log(logStr, ncclDebugFile);
 
     // also print to stderr if we're logging into file
     if (ncclDebugFile != stdout && ncclDebugFile != stderr &&
         level == NCCL_LOG_WARN) {
-      fprintf(stderr, "%s", buffer);
+      fprintf(stderr, "%s", logStr.c_str());
       fflush(stderr);
     }
   }
