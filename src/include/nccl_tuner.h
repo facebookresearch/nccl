@@ -44,6 +44,18 @@ typedef struct {
                               int collNetSupport, int nvlsSupport, int numPipeOps,
                               int *algorithm, int *protocol, int* nChannels);
 
+#ifdef IS_NCCL_EXP
+  ncclResult_t (*addOnlineResult)(
+    ncclFunc_t collType,
+    size_t nBytes,
+    int64_t iteration,
+    float latency,
+    int algo,
+    int protocol,
+    int nChannels,
+    int nThreads);
+#endif
+
   // Terminates the plugin and cleans up any resources that the plugin allocated.
   ncclResult_t (*destroy)();
 } ncclTuner_v1_t;

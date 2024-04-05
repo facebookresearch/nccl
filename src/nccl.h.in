@@ -20,6 +20,7 @@
 #define NCCL_MINOR ${nccl:Minor}
 #define NCCL_PATCH ${nccl:Patch}
 #define NCCL_SUFFIX "${nccl:Suffix} ${nccl:DevSignature}"
+#define IS_NCCL_EXP
 
 #define NCCL_VERSION_CODE ${nccl:Version}
 #define NCCL_VERSION(X,Y,Z) (((X) <= 2 && (Y) <= 8) ? (X) * 1000 + (Y) * 100 + (Z) : (X) * 10000 + (Y) * 100 + (Z))
