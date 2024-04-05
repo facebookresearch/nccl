@@ -3227,6 +3227,107 @@ TEST_F(CvarTest, NCCL_PROTO_value_1) {
   EXPECT_EQ(NCCL_PROTO, "val2_with_space");
 }
 
+TEST_F(CvarTest, NCCL_PROXYMOCK_NET_SEND_FAILURE_valuelist_0) {
+  setenv("NCCL_PROXYMOCK_NET_SEND_FAILURE", "val1,val2,val3", 1);
+  std::vector<std::string> vals{"val1","val2","val3"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_PROXYMOCK_NET_SEND_FAILURE);
+}
+
+TEST_F(CvarTest, NCCL_PROXYMOCK_NET_SEND_FAILURE_valuelist_1) {
+  setenv("NCCL_PROXYMOCK_NET_SEND_FAILURE", "val1:1,val2:2,val3:3", 1);
+  std::vector<std::string> vals{"val1:1","val2:2","val3:3"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_PROXYMOCK_NET_SEND_FAILURE);
+}
+
+TEST_F(CvarTest, NCCL_PROXYMOCK_NET_SEND_FAILURE_valuelist_2) {
+  setenv("NCCL_PROXYMOCK_NET_SEND_FAILURE", "val", 1);
+  std::vector<std::string> vals{"val"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_PROXYMOCK_NET_SEND_FAILURE);
+}
+
+TEST_F(CvarTest, NCCL_PROXYMOCK_NET_SEND_FAILURE_valuelist_3) {
+  setenv("NCCL_PROXYMOCK_NET_SEND_FAILURE", "val1, val_w_space  ", 1);
+  std::vector<std::string> vals{"val1","val_w_space"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_PROXYMOCK_NET_SEND_FAILURE);
+}
+
+TEST_F(CvarTest, NCCL_PROXYMOCK_NET_SEND_FAILURE_default_value) {
+  testDefaultValue("NCCL_PROXYMOCK_NET_SEND_FAILURE");
+  EXPECT_EQ(NCCL_PROXYMOCK_NET_SEND_FAILURE.size(), 0);
+}
+
+TEST_F(CvarTest, NCCL_PROXYMOCK_NET_SEND_FAILURE_warn_dup_val) {
+  setenv("NCCL_PROXYMOCK_NET_SEND_FAILURE", "dummy,dummy", 1);
+  testWarn("NCCL_PROXYMOCK_NET_SEND_FAILURE", "Duplicate token");
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_valuelist_0) {
+  setenv("NCCL_PROXYTRACE", "val1,val2,val3", 1);
+  std::vector<std::string> vals{"val1","val2","val3"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_PROXYTRACE);
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_valuelist_1) {
+  setenv("NCCL_PROXYTRACE", "val1:1,val2:2,val3:3", 1);
+  std::vector<std::string> vals{"val1:1","val2:2","val3:3"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_PROXYTRACE);
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_valuelist_2) {
+  setenv("NCCL_PROXYTRACE", "val", 1);
+  std::vector<std::string> vals{"val"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_PROXYTRACE);
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_valuelist_3) {
+  setenv("NCCL_PROXYTRACE", "val1, val_w_space  ", 1);
+  std::vector<std::string> vals{"val1","val_w_space"};
+  ncclCvarInit();
+  checkListValues<std::string>(vals, NCCL_PROXYTRACE);
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_default_value) {
+  testDefaultValue("NCCL_PROXYTRACE");
+  EXPECT_EQ(NCCL_PROXYTRACE.size(), 0);
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_warn_dup_val) {
+  setenv("NCCL_PROXYTRACE", "dummy,dummy", 1);
+  testWarn("NCCL_PROXYTRACE", "Duplicate token");
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_RECORD_MAX_value_0) {
+  testNumValue<int>("NCCL_PROXYTRACE_RECORD_MAX", 0);
+  EXPECT_EQ(NCCL_PROXYTRACE_RECORD_MAX, 0);
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_RECORD_MAX_value_1) {
+  testNumValue<int>("NCCL_PROXYTRACE_RECORD_MAX", 9999);
+  EXPECT_EQ(NCCL_PROXYTRACE_RECORD_MAX, 9999);
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_RECORD_MAX_value_2) {
+  testNumValue<int>("NCCL_PROXYTRACE_RECORD_MAX", std::numeric_limits<int>::max());
+  EXPECT_EQ(NCCL_PROXYTRACE_RECORD_MAX, std::numeric_limits<int>::max());
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_RECORD_MAX_value_3) {
+  testNumValue<int>("NCCL_PROXYTRACE_RECORD_MAX", std::numeric_limits<int>::min());
+  EXPECT_EQ(NCCL_PROXYTRACE_RECORD_MAX, std::numeric_limits<int>::min());
+}
+
+TEST_F(CvarTest, NCCL_PROXYTRACE_RECORD_MAX_default_value) {
+  testDefaultValue("NCCL_PROXYTRACE_RECORD_MAX");
+  EXPECT_EQ(NCCL_PROXYTRACE_RECORD_MAX, 20);
+}
+
 TEST_F(CvarTest, NCCL_PROXY_APPEND_BATCH_SIZE_value_0) {
   testNumValue<int64_t>("NCCL_PROXY_APPEND_BATCH_SIZE", 0);
   EXPECT_EQ(NCCL_PROXY_APPEND_BATCH_SIZE, 0);

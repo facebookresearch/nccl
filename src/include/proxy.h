@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include "shm.h"
 #include "p2p.h"
+#include "ProxyTrace.h"
 
 enum ncclProxyOpState { ncclProxyOpNone, ncclProxyOpReady, ncclProxyOpProgress };
 
@@ -31,7 +32,7 @@ union ncclProxyOpSpecifics {
   } collnetDirect;
 };
 
-struct ncclProxyOp {
+struct alignas(64) ncclProxyOp {
   struct ncclProxyConnection* connection;
   void* buffer;
   ssize_t nbytes;
@@ -53,6 +54,8 @@ struct ncclProxyOp {
   union ncclProxyOpSpecifics specifics;
 
   struct ncclProxyOp *enqNext;
+
+  struct ProxyTraceArgs traceArgs;
 };
 
 struct ncclProxySubArgs {
@@ -77,6 +80,8 @@ struct ncclProxySubArgs {
   void* profilingEvents[NCCL_STEPS];
   void* recvRequestsCache[NCCL_STEPS];
   int recvRequestsSubCount;
+
+  struct ProxyTraceArgs traceArgs;
 };
 
 struct ncclProxyArgs {
@@ -252,6 +257,8 @@ struct ncclProxyState {
 
   // Queue of expected responses from the proxy
   struct ncclExpectedProxyResponse* expectedResponses;
+
+  std::unique_ptr<ProxyTrace> trace{nullptr};
 };
 
 enum proxyConnectState {

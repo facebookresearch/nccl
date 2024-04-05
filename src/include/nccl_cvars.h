@@ -438,6 +438,15 @@ extern int64_t NCCL_PROGRESS_APPENDOP_FREQ_DEFAULT;
 extern std::string NCCL_PROTO;
 extern std::string NCCL_PROTO_DEFAULT;
 
+extern std::vector<std::string> NCCL_PROXYMOCK_NET_SEND_FAILURE;
+extern std::vector<std::string> NCCL_PROXYMOCK_NET_SEND_FAILURE_DEFAULT;
+
+extern std::vector<std::string> NCCL_PROXYTRACE;
+extern std::vector<std::string> NCCL_PROXYTRACE_DEFAULT;
+
+extern int NCCL_PROXYTRACE_RECORD_MAX;
+extern int NCCL_PROXYTRACE_RECORD_MAX_DEFAULT;
+
 extern int64_t NCCL_PROXY_APPEND_BATCH_SIZE;
 extern int64_t NCCL_PROXY_APPEND_BATCH_SIZE_DEFAULT;
 

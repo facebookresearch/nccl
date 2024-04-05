@@ -1068,6 +1068,40 @@ Description:
 Type: string
 Default: 
 
+NCCL_PROXYMOCK_NET_SEND_FAILURE
+Description:
+    Backdoor to mock a send failure in proxy thread following the format of
+    "<opCount>,<rank>,<remoteRank>,<step>,<num_match>,<delay_sec>".
+    Set any of <opCount>,<rank>,<remoteRank>,<step> to -1 to match any.
+    Set <delay_sec> to 0 to always skip this send as a network failure,
+    otherwise delay it in seconds to mock slow network.
+    Set <num_match> to control how many times to match the send failure.
+    Example 1: "10,1,0,5,1,30" - mock a slow send by delaying 30 seconds
+    for the send operation matching [opCount 10, channel 1, rank 0, remote
+    rank 1, starting from step 5].
+    Example 2: "10,1,-1,-1,2,0" - mock 2 send failures matching [opCount 10,
+    channel 1, rank 0, *any* remote rank, any step].
+Type: stringlist
+Default: None
+
+NCCL_PROXYTRACE
+Description:
+    Enable proxy operation trace collection on the proxy thread. Valid options
+    are comma separated list of the following features. Leave empty to disable
+    all features.
+    trace - enable trace only.
+    verbose - print every proxy operation step as NCCL INFO log.
+Type: stringlist
+Default: None
+
+NCCL_PROXYTRACE_RECORD_MAX
+Description:
+    Maximum amount of past collectives ProxyTrace will record per communicator.
+    If the amount of collective exceeds this value, the oldest one will be
+    dropped. Set the value to -1 will make ProxyTrace record all collectives.
+Type: int
+Default: 20
+
 NCCL_PROXY_APPEND_BATCH_SIZE
 Description:
     Hidden variable. No description provided.

@@ -409,6 +409,8 @@ static ncclResult_t ncclProxyOpToArgs(struct ncclProxyOp* op, struct ncclProxyAr
   sub->peer = op->root;
   sub->reg = op->reg;
   sub->buffer = op->buffer;
+  PROXY_TRACE_OP_TO_SUBARGS(sub, op);
+
   args->nsubs = subIndex+1;
   if (subIndex) {
     if ((args->sliceSteps != op->sliceSteps) ||
@@ -570,6 +572,7 @@ static ncclResult_t SaveProxy(struct ncclComm* comm, struct ncclChannel* channel
 
   if (justInquire) *justInquire = true;
   else {
+    PROXY_TRACE_OP_UPDATE_REMOTE_RANK(op, peer);
     NCCLCHECK(ncclLocalOpAppend(comm, &connector->proxyConn, op));
   }
   return ncclSuccess;
@@ -1735,6 +1738,7 @@ ncclResult_t ncclProxyCreate(struct ncclComm* comm) {
     proxyState->dmaBufSupport = comm->dmaBufSupport;
     proxyState->ncclNet = comm->ncclNet;
     proxyState->ncclCollNet = comm->ncclCollNet;
+    NCCLCHECK(proxyTraceInit(proxyState, comm));
     memcpy(proxyState->buffSizes, comm->buffSizes, sizeof(comm->buffSizes));
 
     pthread_create(&comm->proxyState->thread, NULL, ncclProxyService, comm->proxyState);
@@ -1800,6 +1804,8 @@ ncclResult_t ncclProxyDestroy(struct ncclComm* comm) {
   struct ncclProxyState* sharedProxyState = comm->sharedRes->proxyState;
 
   assert(sharedProxyState->refCount == 0);
+  NCCLCHECK(proxyTraceDestroy(sharedProxyState));
+
   free(sharedProxyState->peerAddresses);
   free(sharedProxyState->peerAddressesUDS);
   free(sharedProxyState->peerSocks);

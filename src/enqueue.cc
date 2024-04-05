@@ -600,6 +600,10 @@ static ncclResult_t addP2pToPlan(
   // Calculate the opCount after appendWorkElemP2p since it will always return
   // with channel->nWork equal to one plus the work index this p2p settled in.
   proxyOp.opCount = uint64_t(plan->channels[channelId].nWork)<<1 | 1;
+
+  info.nChannels = 1; // always 1 channel for each p2p op
+  PROXY_TRACE_INFO_COPY(proxyOp, info);
+
   NCCLCHECK(addProxyOpIfNeeded(comm, plan, &proxyOp));
   COLLTRACE_P2P_APPEND(comm, plan, info);
   return ncclSuccess;
@@ -1816,6 +1820,10 @@ static ncclResult_t initCollProxyOp(struct ncclInfo* collInfo, int channelId, ui
       proxyOp->specifics.collnetDirect.sizePerRank = collInfo->count * ncclTypeSize(collInfo->datatype);
     }
   }
+  // Different from 2.18, 2.20 does not have a single addCollToPlan function
+  // and proxy ops are no longer copied from a single template. Adding collective
+  // information while initializing proxyOps instead.
+  PROXY_TRACE_INFO_COPY((*proxyOp), (*collInfo));
   return ncclSuccess;
 }
 
