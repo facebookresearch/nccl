@@ -1553,7 +1553,9 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
   auto timerBegin = std::chrono::steady_clock::now();
   double timerDeltaMs;
   if (job->color != NCCL_SPLIT_NOCOLOR) {
-    INFO(NCCL_INIT,"comm %p rank %d commId 0x%llx - Init START before bootstrap", comm, comm->rank, (unsigned long long)hashUniqueId(job->commId));
+    INFO(NCCL_INIT,"comm %p rank %d commId 0x%llx %s - Init START before bootstrap",
+         comm, comm->rank, (unsigned long long)hashUniqueId(job->commId),
+         job->parent ? "CommSplit" : "CommInitRank");
   }
 
   CUDACHECKGOTO(cudaSetDevice(cudaDev), res, fail);
@@ -1586,11 +1588,13 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
   comm->commHash = getHash(job->commId.internal, NCCL_UNIQUE_ID_BYTES);
 
   timerDeltaMs = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - timerBegin).count() * 1000;
-  INFO(NCCL_INIT,"comm %p rank %d commId 0x%llx - Init bootstrap COMPLETE in %.2f ms", comm, comm->rank, (unsigned long long)hashUniqueId(job->commId), timerDeltaMs);
+  INFO(NCCL_INIT,"comm %p rank %d commId 0x%llx %s - Init bootstrap COMPLETE in %.2f ms",
+       comm, comm->rank, (unsigned long long)hashUniqueId(job->commId), job->parent ? "CommSplit" : "CommInitRank", timerDeltaMs);
   timerBegin = std::chrono::steady_clock::now();
 
-  INFO(NCCL_INIT,"comm %p rank %d nranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx - Init START",
-       comm, comm->rank, comm->nRanks, comm->cudaDev, comm->nvmlDev, comm->busId, (unsigned long long)hashUniqueId(job->commId), comm->commHash);
+  INFO(NCCL_INIT,"comm %p rank %d nranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx %s - Init START",
+       comm, comm->rank, comm->nRanks, comm->cudaDev, comm->nvmlDev, comm->busId, (unsigned long long)hashUniqueId(job->commId), comm->commHash,
+       job->parent ? "CommSplit" : "CommInitRank");
 
   NCCLCHECKGOTO(initTransportsRank(comm, job->parent), res, fail);
 
@@ -1620,9 +1624,9 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
   NCCLCHECKGOTO(collTraceInit(comm), res, fail);
 
   timerDeltaMs = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - timerBegin).count() * 1000;
-  INFO(NCCL_INIT,"comm %p rank %d nranks %d localrank %d localranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx - Init COMPLETE in %.2f ms",
+  INFO(NCCL_INIT,"comm %p rank %d nranks %d localrank %d localranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx %s - Init COMPLETE in %.2f ms",
        comm, comm->rank, comm->nRanks, comm->localRank, comm->localRanks, comm->cudaDev, comm->nvmlDev, comm->busId,
-       (unsigned long long)hashUniqueId(job->commId), comm->commHash, timerDeltaMs);
+       (unsigned long long)hashUniqueId(job->commId), comm->commHash, job->parent ? "CommSplit" : "CommInitRank", timerDeltaMs);
 
   NCCLCHECKGOTO(ncclCommInitWorld(comm), res, fail);
 
@@ -2224,7 +2228,7 @@ ncclResult_t ncclCommDestroy(ncclComm_t comm) {
   NVTX3_FUNC_WITH_PARAMS(CommDestroy, CommInitRankSchema, payload)
 
   int64_t busId = comm->busId;
-  TRACE(NCCL_INIT, "comm %p rank %d nRanks %d cudaDev %d busId %lx", comm, rank, nranks, cudaDev, busId);
+  INFO(NCCL_INIT, "comm %p commHash %lx rank %d nRanks %d cudaDev %d busId %lx - Destroy START", comm, comm->commHash, rank, nranks, cudaDev, busId);
   // Try and prevent a double free of the comm struct (user error)
   if (comm->rank == -1 || comm->nRanks == -1 || comm->cudaDev == -1 || comm->busId == -1) {
     WARN("comm %p has already been destroyed", comm);
@@ -2240,7 +2244,7 @@ ncclResult_t ncclCommDestroy(ncclComm_t comm) {
   NCCLCHECK(ncclCommEnsureReady(comm));
 
   NCCLCHECK(commReclaim(comm));
-  INFO(NCCL_INIT,"comm %p rank %d nranks %d cudaDev %d busId %lx - Destroy COMPLETE", comm, rank, nranks, cudaDev, busId);
+  INFO(NCCL_INIT,"comm %p commHash %lx rank %d nranks %d cudaDev %d busId %lx - Destroy COMPLETE", comm, comm->commHash, rank, nranks, cudaDev, busId);
 
   return ncclSuccess;
 }
@@ -2259,7 +2263,7 @@ ncclResult_t ncclCommAbort(ncclComm_t comm) {
   NVTX3_FUNC_WITH_PARAMS(CommAbort, CommInitRankSchema, payload)
 
   int64_t busId = comm->busId;
-  TRACE(NCCL_INIT, "comm %p rank %d nRanks %d cudaDev %d busId %lx", comm, rank, nranks, cudaDev, busId);
+  INFO(NCCL_INIT, "comm %p commHash %lx rank %d nRanks %d cudaDev %d busId %lx - Abort START", comm, comm->commHash, rank, nranks, cudaDev, busId);
 
   // Ask anything that might still be running on the device to quit
   childAbortFlag = __atomic_load_n(&comm->childAbortFlag, __ATOMIC_ACQUIRE);
@@ -2277,7 +2281,7 @@ ncclResult_t ncclCommAbort(ncclComm_t comm) {
   ncclCommEnsureReady(comm);
 
   (void) commReclaim(comm);
-  INFO(NCCL_INIT,"comm %p rank %d nranks %d cudaDev %d busId %lx - Abort COMPLETE", comm, rank, nranks, cudaDev, busId);
+  INFO(NCCL_INIT,"comm %p commHash %lx rank %d nranks %d cudaDev %d busId %lx - Abort COMPLETE", comm, comm->commHash, rank, nranks, cudaDev, busId);
 
   return ncclSuccess;
 }
@@ -2291,6 +2295,9 @@ ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t *newc
   NCCLCHECK(ncclGroupStartInternal());
   NCCLCHECKGOTO(PtrCheck(comm, "CommSplit", "comm"), res, fail);
   NCCLCHECKGOTO(PtrCheck(newcomm, "CommSplit", "newcomm"), res, fail);
+
+  INFO(NCCL_INIT, "Parent comm %p commHash %lx rank %d color %d key %d - CommSplit START",
+       comm, comm->commHash, comm->rank, color, key);
 
   /* *newcomm should be NCCL_COMM_NULL until comm split fully complete. */
   *newcomm = NCCL_COMM_NULL;
