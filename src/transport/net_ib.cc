@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <thread>
 #include <poll.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -215,14 +216,16 @@ struct ncclIbDev ncclIbDevs[MAX_IB_DEVS];
 pthread_mutex_t ncclIbLock = PTHREAD_MUTEX_INITIALIZER;
 static int ncclIbRelaxedOrderingEnabled = 0;
 
-pthread_t ncclIbAsyncThread;
-static void* ncclIbAsyncThreadMain(void* args) {
-  struct ncclIbDev* dev = (struct ncclIbDev*)args;
+std::thread ncclIbAsyncThread;
+static void* ncclIbAsyncThreadMain(ncclIbDev* dev) {
   while (1) {
     struct ibv_async_event event;
     if (ncclSuccess != wrap_ibv_get_async_event(dev->context, &event)) { break; }
     char *str;
-    if (ncclSuccess != wrap_ibv_event_type_str(&str, event.event_type)) { break; }
+    if (ncclSuccess != wrap_ibv_event_type_str(&str, event.event_type)) {
+      WARN("NET/IB : %s:%d Got async event that cannot be parsed : %d", dev->devName, dev->portNum, event.event_type);
+      break;
+    }
     if (event.event_type != IBV_EVENT_COMM_EST)
       WARN("NET/IB : %s:%d Got async event : %s", dev->devName, dev->portNum, str);
     if (ncclSuccess != wrap_ibv_ack_async_event(&event)) { break; }
@@ -388,9 +391,18 @@ ncclResult_t ncclIbInit(ncclDebugLogger_t logFunction) {
           TRACE(NCCL_NET,"NET/IB: [%d] %s:%s:%d/%s speed=%d context=%p pciPath=%s ar=%d", d, devices[d]->name, devices[d]->dev_name, ncclIbDevs[ncclNIbDevs].portNum,
               portAttr.link_layer == IBV_LINK_LAYER_INFINIBAND ? "IB" : "RoCE", ncclIbDevs[ncclNIbDevs].speed, context, ncclIbDevs[ncclNIbDevs].pciPath, ncclIbDevs[ncclNIbDevs].ar);
 
-          pthread_create(&ncclIbAsyncThread, NULL, ncclIbAsyncThreadMain, ncclIbDevs + ncclNIbDevs);
-          ncclSetThreadName(ncclIbAsyncThread, "NCCL IbAsync %2d", ncclNIbDevs);
-          pthread_detach(ncclIbAsyncThread); // will not be pthread_join()'d
+          int device;
+          cudaGetDevice(&device);
+          auto ibDev = &ncclIbDevs[ncclNIbDevs];
+          ncclIbAsyncThread = std::thread{[device, ibDev](){
+            // Set cuda device for the thread so that logging can correctly
+            // identify the local rank of the thread.
+            cudaSetDevice(device);
+            ncclIbAsyncThreadMain(ibDev);
+          }};
+          ncclSetThreadName(ncclIbAsyncThread.native_handle(), "NCCL IbAsync %2d", ncclNIbDevs);
+          ncclIbAsyncThread.detach(); // will not be pthread_join()'d
+
 
           int mergedDev = ncclNMergedIbDevs;
           if (NCCL_IB_MERGE_NICS) {
