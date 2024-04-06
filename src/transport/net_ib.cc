@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <thread>
 #include <poll.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -221,16 +222,18 @@ struct userIbDev userIbDevs[MAX_IB_DEVS];
 pthread_mutex_t ncclIbLock = PTHREAD_MUTEX_INITIALIZER;
 static int ncclIbRelaxedOrderingEnabled = 0;
 
-pthread_t ncclIbAsyncThread;
-static void* ncclIbAsyncThreadMain(void* args) {
-  struct ibv_context* context = (struct ibv_context*)args;
+std::thread ncclIbAsyncThread;
+static void* ncclIbAsyncThreadMain(struct ibv_context* context) {
   while (1) {
     struct ibv_async_event event;
     if (ncclSuccess != wrap_ibv_get_async_event(context, &event)) { break; }
     char *str;
-    if (ncclSuccess != wrap_ibv_event_type_str(&str, event.event_type)) { break; }
+    if (ncclSuccess != wrap_ibv_event_type_str(&str, event.event_type)) {
+      WARN("NET/IB : %s Got async event that cannot be parsed : %d", context->device->name, event.event_type);
+      break;
+    }
     if (event.event_type != IBV_EVENT_COMM_EST)
-      WARN("NET/IB : Got async event : %s", str);
+      WARN("NET/IB : %s Got async event : %s", context->device->name, str);
     if (ncclSuccess != wrap_ibv_ack_async_event(&event)) { break; }
   }
   return NULL;
@@ -590,9 +593,17 @@ ncclResult_t ncclIbInit(ncclDebugLogger_t logFunction) {
           ncclIbDevs[ncclNIbDevs].ar = (portAttr.link_layer == IBV_LINK_LAYER_INFINIBAND) ? 1 : 0;
           if (NCCL_IB_ADAPTIVE_ROUTING != -2) ncclIbDevs[ncclNIbDevs].ar = NCCL_IB_ADAPTIVE_ROUTING;
 
-          pthread_create(&ncclIbAsyncThread, NULL, ncclIbAsyncThreadMain, context);
-          ncclSetThreadName(ncclIbAsyncThread, "NCCL IbAsync %2d", ncclNIbDevs);
-          pthread_detach(ncclIbAsyncThread); // will not be pthread_join()'d
+          int device;
+          cudaGetDevice(&device);
+          ncclIbAsyncThread = std::thread{[device, context](){
+            // Set cuda device for the thread so that logging can correctly
+            // identify the local rank of the thread.
+            cudaSetDevice(device);
+            ncclIbAsyncThreadMain(context);
+          }};
+          ncclSetThreadName(ncclIbAsyncThread.native_handle(), "NCCL IbAsync %2d", ncclNIbDevs);
+          ncclIbAsyncThread.detach(); // will not be pthread_join()'d
+
           ncclNIbDevs++;
           nPorts++;
         }
