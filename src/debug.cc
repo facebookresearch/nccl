@@ -56,7 +56,7 @@
      absolute path first. For more information:
      https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-debug-file
 
-- name        : NCCL_WARN_ENABLE_DEBUG_INFO
+ - name        : NCCL_WARN_ENABLE_DEBUG_INFO
    type        : int64_t
    default     : 0
    description : |-
