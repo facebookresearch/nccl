@@ -161,6 +161,16 @@
      will not use all QPs. For more information:
      https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-ib-split-data-on-qps
 
+ - name        : NCCL_IB_FIFO_TC
+   type        : int64_t
+   default     : 0
+   description : |-
+     This parameter is used to override the traffic class attribute of the qp
+     on which the cts/fifo messages are sent on. We want to prioritize
+     fifo message to be sent on a network queue different from data traffic.
+     Doing so will remove control path messages from causing slow downs
+     in the case of network congestion when loaded latency is higher.
+
 === END_NCCL_CVAR_INFO_BLOCK ===
 */
 
@@ -831,7 +841,7 @@ ncclResult_t ncclIbCreateQp(uint8_t ib_port, struct ncclIbNetCommDevBase* base, 
   return ncclSuccess;
 }
 
-ncclResult_t ncclIbRtrQp(struct ibv_qp* qp, uint32_t dest_qp_num, struct ncclIbDevInfo* info) {
+ncclResult_t ncclIbRtrQp(struct ibv_qp* qp, uint32_t dest_qp_num, struct ncclIbDevInfo* info, bool override_tc) {
   struct ibv_qp_attr qpAttr;
   memset(&qpAttr, 0, sizeof(struct ibv_qp_attr));
   qpAttr.qp_state = IBV_QPS_RTR;
@@ -847,7 +857,12 @@ ncclResult_t ncclIbRtrQp(struct ibv_qp* qp, uint32_t dest_qp_num, struct ncclIbD
     qpAttr.ah_attr.grh.flow_label = 0;
     qpAttr.ah_attr.grh.sgid_index = NCCL_IB_GID_INDEX;
     qpAttr.ah_attr.grh.hop_limit = 255;
-    qpAttr.ah_attr.grh.traffic_class = NCCL_IB_TC;
+    if(NCCL_IB_FIFO_TC && override_tc){
+      qpAttr.ah_attr.grh.traffic_class = NCCL_IB_FIFO_TC;
+    }
+    else {
+      qpAttr.ah_attr.grh.traffic_class = NCCL_IB_TC;
+    }
   } else {
     qpAttr.ah_attr.is_global = 0;
     qpAttr.ah_attr.dlid = info->lid;
@@ -1060,7 +1075,7 @@ ib_connect:
     if (remQpInfo->ece_supported && remQpInfo->ece_supported)
       NCCLCHECK(wrap_ibv_set_ece(qp, &remQpInfo->ece, &remQpInfo->ece_supported));
 
-    NCCLCHECK(ncclIbRtrQp(qp, remQpInfo->qpn, remDevInfo));
+    NCCLCHECK(ncclIbRtrQp(qp, remQpInfo->qpn, remDevInfo, false));
     NCCLCHECK(ncclIbRtsQp(qp));
   }
 
@@ -1193,8 +1208,12 @@ ib_recv:
       if (meta.qpInfo[q].ece_supported)
         NCCLCHECK(wrap_ibv_query_ece(qp->qp, &meta.qpInfo[q].ece, &meta.qpInfo[q].ece_supported));
     }
-
-    NCCLCHECK(ncclIbRtrQp(qp->qp, remMeta.qpInfo[q].qpn, remDevInfo));
+    if(q==0){
+      NCCLCHECK(ncclIbRtrQp(qp->qp, remMeta.qpInfo[q].qpn, remDevInfo, true));
+    }
+    else {
+      NCCLCHECK(ncclIbRtrQp(qp->qp, remMeta.qpInfo[q].qpn, remDevInfo, false));
+    }
     NCCLCHECK(ncclIbRtsQp(qp->qp));
   }
 
@@ -1227,7 +1246,7 @@ ib_recv:
       devInfo.spn         = rCommDev->base.gidInfo.localGid.global.subnet_prefix;
       devInfo.iid         = rCommDev->base.gidInfo.localGid.global.interface_id;
       devInfo.mtu         = ibDev->portAttr.active_mtu;
-      NCCLCHECK(ncclIbRtrQp(rCommDev->gpuFlush.qp.qp, rCommDev->gpuFlush.qp.qp->qp_num, &devInfo));
+      NCCLCHECK(ncclIbRtrQp(rCommDev->gpuFlush.qp.qp, rCommDev->gpuFlush.qp.qp->qp_num, &devInfo, false));
       NCCLCHECK(ncclIbRtsQp(rCommDev->gpuFlush.qp.qp));
     }
 

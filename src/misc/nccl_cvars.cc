@@ -333,6 +333,8 @@ int64_t NCCL_IB_AR_THRESHOLD;
 int64_t NCCL_IB_AR_THRESHOLD_DEFAULT;
 int64_t NCCL_IB_DISABLE;
 int64_t NCCL_IB_DISABLE_DEFAULT;
+int64_t NCCL_IB_FIFO_TC;
+int64_t NCCL_IB_FIFO_TC_DEFAULT;
 int64_t NCCL_IB_GID_INDEX;
 int64_t NCCL_IB_GID_INDEX_DEFAULT;
 std::string NCCL_IB_HCA_PREFIX;
@@ -585,6 +587,7 @@ void initEnvSet(std::unordered_set<std::string>& env) {
   env.insert("NCCL_IB_ADAPTIVE_ROUTING");
   env.insert("NCCL_IB_AR_THRESHOLD");
   env.insert("NCCL_IB_DISABLE");
+  env.insert("NCCL_IB_FIFO_TC");
   env.insert("NCCL_IB_GID_INDEX");
   env.insert("NCCL_IB_HCA");
   env.insert("NCCL_IB_MERGE_NICS");
@@ -972,6 +975,9 @@ void readCvarEnv() {
 
   NCCL_IB_DISABLE = env2num<int64_t>("NCCL_IB_DISABLE", "0");
   NCCL_IB_DISABLE_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "0");
+
+  NCCL_IB_FIFO_TC = env2num<int64_t>("NCCL_IB_FIFO_TC", "0");
+  NCCL_IB_FIFO_TC_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "0");
 
   NCCL_IB_GID_INDEX = env2num<int64_t>("NCCL_IB_GID_INDEX", "0");
   NCCL_IB_GID_INDEX_DEFAULT = env2num<int64_t>("NCCL_ENV_DO_NOT_SET", "0");

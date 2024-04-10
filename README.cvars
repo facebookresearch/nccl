@@ -555,6 +555,16 @@ Description:
 Type: int64_t
 Default: 0
 
+NCCL_IB_FIFO_TC
+Description:
+    This parameter is used to override the traffic class attribute of the qp
+    on which the cts/fifo messages are sent on. We want to prioritize
+    fifo message to be sent on a network queue different from data traffic.
+    Doing so will remove control path messages from causing slow downs
+    in the case of network congestion when loaded latency is higher.
+Type: int64_t
+Default: 0
+
 NCCL_IB_GID_INDEX
 Description:
     The NCCL_IB_GID_INDEX variable defines the Global ID index used

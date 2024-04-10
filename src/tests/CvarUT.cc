@@ -1748,6 +1748,26 @@ TEST_F(CvarTest, NCCL_IB_DISABLE_value_3) {
   EXPECT_EQ(NCCL_IB_DISABLE, std::numeric_limits<int64_t>::min());
 }
 
+TEST_F(CvarTest, NCCL_IB_FIFO_TC_value_0) {
+  testNumValue<int64_t>("NCCL_IB_FIFO_TC", 0);
+  EXPECT_EQ(NCCL_IB_FIFO_TC, 0);
+}
+
+TEST_F(CvarTest, NCCL_IB_FIFO_TC_value_1) {
+  testNumValue<int64_t>("NCCL_IB_FIFO_TC", 9999);
+  EXPECT_EQ(NCCL_IB_FIFO_TC, 9999);
+}
+
+TEST_F(CvarTest, NCCL_IB_FIFO_TC_value_2) {
+  testNumValue<int64_t>("NCCL_IB_FIFO_TC", std::numeric_limits<int64_t>::max());
+  EXPECT_EQ(NCCL_IB_FIFO_TC, std::numeric_limits<int64_t>::max());
+}
+
+TEST_F(CvarTest, NCCL_IB_FIFO_TC_value_3) {
+  testNumValue<int64_t>("NCCL_IB_FIFO_TC", std::numeric_limits<int64_t>::min());
+  EXPECT_EQ(NCCL_IB_FIFO_TC, std::numeric_limits<int64_t>::min());
+}
+
 TEST_F(CvarTest, NCCL_IB_GID_INDEX_value_0) {
   testNumValue<int64_t>("NCCL_IB_GID_INDEX", 0);
   EXPECT_EQ(NCCL_IB_GID_INDEX, 0);
