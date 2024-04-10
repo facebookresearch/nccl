@@ -23,7 +23,6 @@
 #include <unistd.h>
 #define ENABLE_TIMER 0
 #include "timer.h"
-
 #include "ibvwrap.h"
 
 /*
@@ -171,6 +170,16 @@
      message we send. Operations which do not send multiple messages
      will not use all QPs. For more information:
      https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html#nccl-ib-split-data-on-qps
+
+ - name        : NCCL_IB_FIFO_TC
+   type        : int64_t
+   default     : 0
+   description : |-
+     This parameter is used to override the traffic class attribute of the qp
+     on which the cts/fifo messages are sent on. We want to prioritize
+     fifo message to be sent on a network queue different from data traffic.
+     Doing so will remove control path messages from causing slow downs
+     in the case of network congestion when loaded latency is higher.
 
 === END_NCCL_CVAR_INFO_BLOCK ===
 */
@@ -915,7 +924,7 @@ ncclResult_t ncclIbCreateQp(uint8_t ib_port, struct ncclIbVerbs* verbs, int acce
   return ncclSuccess;
 }
 
-ncclResult_t ncclIbRtrQp(struct ibv_qp* qp, uint8_t sGidIndex, uint32_t qpn, struct ncclIbQpInfo* info) {
+ncclResult_t ncclIbRtrQp(struct ibv_qp* qp, uint8_t sGidIndex, uint32_t qpn, struct ncclIbQpInfo* info, bool override_tc) {
   struct ibv_qp_attr qpAttr;
   memset(&qpAttr, 0, sizeof(struct ibv_qp_attr));
   qpAttr.qp_state = IBV_QPS_RTR;
@@ -931,7 +940,12 @@ ncclResult_t ncclIbRtrQp(struct ibv_qp* qp, uint8_t sGidIndex, uint32_t qpn, str
     qpAttr.ah_attr.grh.flow_label = 0;
     qpAttr.ah_attr.grh.sgid_index = sGidIndex;
     qpAttr.ah_attr.grh.hop_limit = 255;
-    qpAttr.ah_attr.grh.traffic_class = NCCL_IB_TC;
+    if(NCCL_IB_FIFO_TC && override_tc){
+      qpAttr.ah_attr.grh.traffic_class = NCCL_IB_FIFO_TC;
+    }
+    else {
+      qpAttr.ah_attr.grh.traffic_class = NCCL_IB_TC;
+    }
   } else {
     qpAttr.ah_attr.is_global = 0;
     qpAttr.ah_attr.dlid = info->lid;
@@ -1063,7 +1077,7 @@ ib_connect:
   comm->gidInfo.remoteGid.global.interface_id = remQpInfo.iid;
   for (int q=0; q<comm->nqps; q++) {
     struct ibv_qp* qp = comm->qps[q];
-    NCCLCHECK(ncclIbRtrQp(qp, comm->gidInfo.localGidIndex, remQpInfo.qpn[q], &remQpInfo));
+    NCCLCHECK(ncclIbRtrQp(qp, comm->gidInfo.localGidIndex, remQpInfo.qpn[q], &remQpInfo, false));
     NCCLCHECK(ncclIbRtsQp(qp));
   }
 
@@ -1146,7 +1160,12 @@ ib_recv:
   // Setup QP
   for (int q=0; q<rComm->nqps; q++) {
     struct ibv_qp* qp = rComm->qps[q];
-    NCCLCHECK(ncclIbRtrQp(qp, rComm->gidInfo.localGidIndex, remQpInfo.qpn[q], &remQpInfo));
+    if(q==0){
+      NCCLCHECK(ncclIbRtrQp(qp, rComm->gidInfo.localGidIndex, remQpInfo.qpn[q], &remQpInfo, true));
+    }
+    else{
+      NCCLCHECK(ncclIbRtrQp(qp, rComm->gidInfo.localGidIndex, remQpInfo.qpn[q], &remQpInfo, false));
+    }
     NCCLCHECK(ncclIbRtsQp(qp));
   }
 
@@ -1173,7 +1192,7 @@ ib_recv:
     localQpInfo.spn=rComm->gidInfo.localGid.global.subnet_prefix;
     localQpInfo.iid=rComm->gidInfo.localGid.global.interface_id;
     localQpInfo.mtu=portAttr.active_mtu;
-    NCCLCHECK(ncclIbRtrQp(rComm->gpuFlush.qp, rComm->gidInfo.localGidIndex, rComm->gpuFlush.qp->qp_num, &localQpInfo));
+    NCCLCHECK(ncclIbRtrQp(rComm->gpuFlush.qp, rComm->gidInfo.localGidIndex, rComm->gpuFlush.qp->qp_num, &localQpInfo, false));
     NCCLCHECK(ncclIbRtsQp(rComm->gpuFlush.qp));
   }
 

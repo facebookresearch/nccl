@@ -266,6 +266,9 @@ extern int64_t NCCL_IB_AR_THRESHOLD_DEFAULT;
 extern int64_t NCCL_IB_DISABLE;
 extern int64_t NCCL_IB_DISABLE_DEFAULT;
 
+extern int64_t NCCL_IB_FIFO_TC;
+extern int64_t NCCL_IB_FIFO_TC_DEFAULT;
+
 extern int NCCL_IB_GID_INDEX;
 extern int NCCL_IB_GID_INDEX_DEFAULT;
 
