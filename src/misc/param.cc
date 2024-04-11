@@ -7,6 +7,7 @@
 #include "param.h"
 #include "debug.h"
 #include "nccl_cvars.h"
+#include "Logger.h"
 #include "tuner.h"
 
 #include <algorithm>
@@ -88,6 +89,9 @@ void initEnv() {
   ncclDebugLevel = -1;
 
   ncclCvarInit();
+
+  // Load Logger thread
+  NcclLogger::init();
 
   __atomic_store_n(&isInitialized, true, __ATOMIC_RELEASE);
   pthread_mutex_unlock(&initEnvLock);

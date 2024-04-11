@@ -189,7 +189,7 @@ void ncclDebugInit() {
 
   ncclEpoch = std::chrono::steady_clock::now();
   if (NCCL_LOGGER_MODE == NCCL_LOGGER_MODE::async){
-    NcclLogger::init(ncclDebugFile);
+    NcclLogger::setDebugLoggingMode(ncclDebugFile);
   }
   __atomic_store_n(&ncclDebugLevel, tempNcclDebugLevel, __ATOMIC_RELEASE);
   pthread_mutex_unlock(&ncclDebugLock);

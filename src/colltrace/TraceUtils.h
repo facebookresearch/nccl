@@ -42,13 +42,15 @@ static inline std::string toQuotedString(const T& obj) {
  * Input arguments:
  *   keys: a vector of keys in the order of insertion
  *   map: the map object to be serialized
- *   quoted: whether to quote string key or value
+ *   quoted_key: whether to quote string key
+ *   quoted_value: whether to quote string value
  */
 template <typename T>
 static inline std::string serializeMap(
     std::vector<std::string>& keys,
     std::unordered_map<std::string, T>& map,
-    bool quoted = false) {
+    bool quoted_key = false,
+    bool quoted_value = false) {
   std::string final_string = "{";
   // unordered_map doesn't maintain insertion order. Use keys to ensure
   // serialize in the same order as program defined
@@ -58,10 +60,10 @@ static inline std::string serializeMap(
       continue;
     }
     T& val = map[key];
-    final_string += quoted ? toQuotedString(key) : key; // always quote key
+    final_string += quoted_key ? toQuotedString(key) : key; // always quote key
     final_string += ": ";
     // only string value needs to be quoted; set when creating map
-    final_string += toString(val);
+    final_string += quoted_value ? toQuotedString(val) : toString(val);
     final_string += ", ";
   }
   if (final_string.size() > 1) {

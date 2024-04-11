@@ -90,6 +90,9 @@ extern int NCCL_COLLTRACE_RECORD_MAX_DEFAULT;
 extern int64_t NCCL_COMM_BLOCKING;
 extern int64_t NCCL_COMM_BLOCKING_DEFAULT;
 
+extern std::string NCCL_COMM_EVENT_LOGGING;
+extern std::string NCCL_COMM_EVENT_LOGGING_DEFAULT;
+
 extern std::string NCCL_COMM_ID;
 extern std::string NCCL_COMM_ID_DEFAULT;
 

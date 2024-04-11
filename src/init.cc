@@ -19,6 +19,7 @@
 #include "tuner.h"
 #include "CollTrace.h"
 #include "AlgoInit.h"
+#include "Logger.h"
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
@@ -29,6 +30,7 @@
 #include <unistd.h>
 #include <cstdlib>
 #include <mutex>
+#include "ExtUtils.h"
 
 /*
 === BEGIN_NCCL_CVAR_INFO_BLOCK ===
@@ -1019,6 +1021,16 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
   int tpProxyRank;
 
   // AllGather1 - begin
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          "PeerInfoAllGather START",
+          parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId("PeerInfoAllGather"));
+
   NCCLCHECKGOTO(ncclCalloc(&comm->peerInfo, nranks+1), ret, fail); // Extra rank to represent CollNet root
   NCCLCHECKGOTO(fillInfo(comm, comm->peerInfo+rank, comm->commHash), ret, fail);
   NCCLCHECKGOTO(bootstrapAllGather(comm->bootstrap, comm->peerInfo, sizeof(struct ncclPeerInfo)), ret, fail);
@@ -1032,6 +1044,16 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
       goto fail;
     }
   }
+
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          "PeerInfoAllGather COMPLETE",
+          parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId("PeerInfoAllGather"));
   // AllGather1 - end
 
   do {
@@ -1154,6 +1176,16 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
   }
 
   // AllGather3 - begin
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          "TopoAllGather START",
+          parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId("TopoAllGather"));
+
   NCCLCHECKGOTO(ncclCalloc(&allGather3Data, nranks), ret, fail);
 
   for (int a=0; a<NCCL_NUM_ALGORITHMS; a++) {
@@ -1263,6 +1295,16 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
 
   NCCLCHECKGOTO(ncclCalloc(&rings, nranks*MAXCHANNELS), ret, fail);
   NCCLCHECKGOTO(ncclTopoPostset(comm, nodesFirstRank, nodesTreePatterns, allTopoRanks, rings, graphs), ret, fail);
+
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          "TopoAllGather COMPLETE",
+          parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId("TopoAllGather"));
   // AllGather3 - end
 
   TRACE(NCCL_INIT, "rank %d nranks %d - BUILT %d TREES/RINGS", rank, nranks, comm->nChannels);
@@ -1556,6 +1598,16 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
     INFO(NCCL_INIT,"comm %p rank %d commId 0x%llx %s - Init START before bootstrap",
          comm, comm->rank, (unsigned long long)hashUniqueId(job->commId),
          job->parent ? "CommSplit" : "CommInitRank");
+
+    NcclLogger::recordStart(
+        std::make_unique<CommEvent>(
+            (unsigned long long)hashUniqueId(job->commId),
+            comm->commHash,
+            job->myrank,
+            job->nranks,
+            "Init bootstrap START",
+            job->parent ? "CommSplit" : "CommInitRank"),
+        getThreadUniqueId("Init bootstrap"));
   }
 
   CUDACHECKGOTO(cudaSetDevice(cudaDev), res, fail);
@@ -1590,11 +1642,32 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
   timerDeltaMs = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - timerBegin).count() * 1000;
   INFO(NCCL_INIT,"comm %p rank %d commId 0x%llx %s - Init bootstrap COMPLETE in %.2f ms",
        comm, comm->rank, (unsigned long long)hashUniqueId(job->commId), job->parent ? "CommSplit" : "CommInitRank", timerDeltaMs);
+
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          (unsigned long long)hashUniqueId(job->commId),
+          comm->commHash,
+          comm->rank,
+          comm->nRanks,
+          "Init bootstrap COMPLETE",
+          job->parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId("Init bootstrap"));
+
   timerBegin = std::chrono::steady_clock::now();
 
   INFO(NCCL_INIT,"comm %p rank %d nranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx %s - Init START",
        comm, comm->rank, comm->nRanks, comm->cudaDev, comm->nvmlDev, comm->busId, (unsigned long long)hashUniqueId(job->commId), comm->commHash,
        job->parent ? "CommSplit" : "CommInitRank");
+
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          (unsigned long long)hashUniqueId(job->commId),
+          comm->commHash,
+          comm->rank,
+          comm->nRanks,
+          "Init START",
+          job->parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId("Init"));
 
   NCCLCHECKGOTO(initTransportsRank(comm, job->parent), res, fail);
 
@@ -1627,6 +1700,16 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
   INFO(NCCL_INIT,"comm %p rank %d nranks %d localrank %d localranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx %s - Init COMPLETE in %.2f ms",
        comm, comm->rank, comm->nRanks, comm->localRank, comm->localRanks, comm->cudaDev, comm->nvmlDev, comm->busId,
        (unsigned long long)hashUniqueId(job->commId), comm->commHash, job->parent ? "CommSplit" : "CommInitRank", timerDeltaMs);
+
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          (unsigned long long)hashUniqueId(job->commId),
+          comm->commHash,
+          comm->rank,
+          comm->nRanks,
+          "Init COMPLETE",
+          job->parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId("Init"));
 
   NCCLCHECKGOTO(ncclCommInitWorld(comm), res, fail);
 
@@ -2084,6 +2167,16 @@ static ncclResult_t commFinalize(ncclComm_t comm, bool userCalled) {
   ncclResult_t ret = ncclSuccess;
   struct ncclCommFinalizeAsyncJob *job = NULL;
 
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          comm->rank,
+          comm->nRanks,
+          "CommFinalize START",
+          ""),
+      getThreadUniqueId("CommFinalize"));
+
   /* launch async thread to finalize comm. */
   NCCLCHECKGOTO(ncclCalloc(&job, 1), ret, fail);
   job->comm = comm;
@@ -2094,6 +2187,16 @@ static ncclResult_t commFinalize(ncclComm_t comm, bool userCalled) {
     NCCLCHECKGOTO(commDestroySync(&job->base), ret, fail);
     free(job);
   }
+
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          comm->rank,
+          comm->nRanks,
+          "CommFinalize COMPLETE",
+          ""),
+      getThreadUniqueId("CommFinalize"));
 
 exit:
   return ncclGroupErrCheck(ret);
@@ -2172,6 +2275,14 @@ static ncclResult_t commReclaim(ncclComm_t comm) {
         }
       }
 
+      NcclLogger::record(std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          comm->rank,
+          comm->nRanks,
+          "commDestroySync COMPLETE",
+          ""));
+
       /* ncclProxyStop() loop must be put after commDestroySync() loop. Namely, you cannot do:
        *  while(...) {
        *     commDestroySync(...);
@@ -2194,6 +2305,13 @@ static ncclResult_t commReclaim(ncclComm_t comm) {
           WARN("commReclaim: comm %p (rank = %d) destroys proxy resource error %d", curIntraComm, curRank, ret);
         }
       }
+      NcclLogger::record(std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          comm->rank,
+          comm->nRanks,
+          "ncclProxyStop COMPLETE",
+          ""));
 
       /* free local resources. */
       nextIntraComm = intracomm0;
@@ -2229,6 +2347,12 @@ ncclResult_t ncclCommDestroy(ncclComm_t comm) {
 
   int64_t busId = comm->busId;
   INFO(NCCL_INIT, "comm %p commHash %lx rank %d nRanks %d cudaDev %d busId %lx - Destroy START", comm, comm->commHash, rank, nranks, cudaDev, busId);
+
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0, comm->commHash, comm->rank, comm->nRanks, "Destroy START", ""),
+      getThreadUniqueId("Destroy"));
+
   // Try and prevent a double free of the comm struct (user error)
   if (comm->rank == -1 || comm->nRanks == -1 || comm->cudaDev == -1 || comm->busId == -1) {
     WARN("comm %p has already been destroyed", comm);
@@ -2245,6 +2369,11 @@ ncclResult_t ncclCommDestroy(ncclComm_t comm) {
 
   NCCLCHECK(commReclaim(comm));
   INFO(NCCL_INIT,"comm %p commHash %lx rank %d nranks %d cudaDev %d busId %lx - Destroy COMPLETE", comm, comm->commHash, rank, nranks, cudaDev, busId);
+
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0, comm->commHash, rank, nranks, "Destroy COMPLETE", ""),
+      getThreadUniqueId("Destroy"));
 
   return ncclSuccess;
 }
@@ -2265,6 +2394,11 @@ ncclResult_t ncclCommAbort(ncclComm_t comm) {
   int64_t busId = comm->busId;
   INFO(NCCL_INIT, "comm %p commHash %lx rank %d nRanks %d cudaDev %d busId %lx - Abort START", comm, comm->commHash, rank, nranks, cudaDev, busId);
 
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0, comm->commHash, rank, nranks, "Abort START", ""),
+      getThreadUniqueId("Abort"));
+
   // Ask anything that might still be running on the device to quit
   childAbortFlag = __atomic_load_n(&comm->childAbortFlag, __ATOMIC_ACQUIRE);
   if (childAbortFlag != NULL) {
@@ -2282,6 +2416,11 @@ ncclResult_t ncclCommAbort(ncclComm_t comm) {
 
   (void) commReclaim(comm);
   INFO(NCCL_INIT,"comm %p commHash %lx rank %d nranks %d cudaDev %d busId %lx - Abort COMPLETE", comm, comm->commHash, rank, nranks, cudaDev, busId);
+
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0, comm->commHash, rank, nranks, "Abort COMPLETE", ""),
+      getThreadUniqueId("Abort"));
 
   return ncclSuccess;
 }
