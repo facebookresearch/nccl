@@ -4,6 +4,7 @@
 
 #include "DdaThreadedData.h"
 #include "comm.h"
+#include "bootstrap.h"
 
 namespace nccl {
 namespace algorithms {
@@ -39,34 +40,20 @@ ncclResult_t DdaMemHandler::exchangeMemHandles() {
   const size_t kNumSendHandle = allMemAddrs_.at(comm_->rank).size();
   const size_t kNumRecvHandle = kNumSendHandle * comm_->nRanks;
   const size_t kSendSize = sizeof(ExchangedHandle) * kNumSendHandle;
-  const size_t kRecvSize = kSendSize * comm_->nRanks;
 
-  std::vector<ExchangedHandle> sendHandles(kNumSendHandle);
   std::vector<ExchangedHandle> recvHandles(kNumRecvHandle);
-  ExchangedHandle* sendBuff_d{nullptr};
-  ExchangedHandle* recvBuff_d{nullptr};
-  CUDACHECK(cudaMalloc(&sendBuff_d, kSendSize));
-  CUDACHECK(cudaMalloc(&recvBuff_d, kRecvSize));
 
-  // fill up sendbuffs
+  // fill up my data
   for (int i = 0; i < kNumSendHandle; ++i) {
     const auto& memAddr = allMemAddrs_.at(comm_->rank)[i];
-    auto& handle = sendHandles[i];
+    auto& handle = recvHandles[comm_->rank * kNumSendHandle + i];
     handle.addr = memAddr.addr;
     CUDACHECK(cudaIpcGetMemHandle(&handle.ipcHandle, memAddr.addr));
   }
-  CUDACHECK(cudaMemcpy(sendBuff_d, sendHandles.data(), kSendSize, cudaMemcpyDefault));
 
-  // exchange handles
-  cudaStream_t stream;
-  CUDACHECK(cudaStreamCreate(&stream));
-  NCCLCHECK(ncclAllGather(
-      sendBuff_d, recvBuff_d, kSendSize, ncclUint8, comm_, stream));
-  CUDACHECK(cudaStreamSynchronize(stream));
-  CUDACHECK(cudaStreamDestroy(stream));
+  bootstrapState* state = (bootstrapState*)comm_->bootstrap;
+  NCCLCHECK(bootstrapAllGather(state, recvHandles.data(), kSendSize));
 
-  // decode received handles
-  CUDACHECK(cudaMemcpy(recvHandles.data(), recvBuff_d, kRecvSize, cudaMemcpyDefault));
   for (int rank = 0; rank < comm_->nRanks; ++rank) {
     if (rank == comm_->rank) {
       // skip self
@@ -92,9 +79,6 @@ ncclResult_t DdaMemHandler::exchangeMemHandles() {
       allMemAddrs_[rank].push_back(std::move(memAddr));
     }
   }
-
-  CUDACHECK(cudaFree(sendBuff_d));
-  CUDACHECK(cudaFree(recvBuff_d));
 
   return ncclSuccess;
 }
