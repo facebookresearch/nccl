@@ -1852,7 +1852,7 @@ ncclResult_t ncclIbTest(void* request, int* done, int* sizes) {
 
           #ifdef ENABLE_TRACE
           char line[SOCKET_NAME_MAXLEN+1];
-          TRACE(NCCL_NET, "Got completion from peer %s with status=%d opcode=%d len=%d wr_id=%d r=%p type=%d events={%d,%d}, i=%d",
+          TRACE(NCCL_NET, "Got completion from peer %s with status=%d opcode=%d len=%d wr_id=%lu r=%p type=%d events={%d,%d}, i=%d",
               ncclSocketToString(&addr, line), wc->status, wc->opcode,wc->byte_len, wc->wr_id, req, req->type, req->events[0], req->events[1], i);
           #endif
           if (req->type == NCCL_NET_IB_REQ_SEND) {
