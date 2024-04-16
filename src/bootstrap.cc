@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include "proxy.h"
 #include "nccl_cvars.h"
+#include "Logger.h"
+#include "include/ExtUtils.h"
 
 struct bootstrapRootArgs {
   struct ncclSocket* listenSock;
@@ -24,6 +26,14 @@ static char bootstrapNetIfName[MAX_IF_NAME_SIZE+1];
 static union ncclSocketAddress bootstrapNetIfAddr;
 static int bootstrapNetInitDone = 0;
 pthread_mutex_t bootstrapNetLock = PTHREAD_MUTEX_INITIALIZER;
+
+/* Bootstrap steps */
+static constexpr std::string_view kRootCollectHandles = "Bootstrap RootCollectHandles";
+static constexpr std::string_view kRootSendOutHandles = "Bootstrap RootSendOutHandles";
+static constexpr std::string_view kSocketCreation = "Bootstrap SocketCreation";
+static constexpr std::string_view kGetPeerInfoFromRoot = "Bootstrap GetPeerInfoFromRoot";
+static constexpr std::string_view kConnectToPeer = "Bootstrap ConnectToPeer";
+static constexpr std::string_view kConstruction = "Bootstrap Construction";
 
 ncclResult_t bootstrapNetInit() {
   if (bootstrapNetInitDone == 0) {
@@ -112,6 +122,16 @@ static void *bootstrapRoot(void* rargs) {
 
   TRACE(NCCL_INIT, "BEGIN");
   /* Receive addresses from all ranks */
+  NcclLogger::recordStart(
+    std::make_unique<CommEvent>(
+        0,
+        0,
+        0,
+        nranks,
+        std::string(kRootCollectHandles) + " START",
+        ""),
+    getThreadUniqueId(kRootCollectHandles.data()));
+
   do {
     struct ncclSocket sock;
     NCCLCHECKGOTO(ncclSocketInit(&sock), res, out);
@@ -143,8 +163,26 @@ static void *bootstrapRoot(void* rargs) {
     TRACE(NCCL_INIT, "Received connect from rank %d total %d/%d",  info.rank, c, nranks);
   } while (c < nranks);
   TRACE(NCCL_INIT, "COLLECTED ALL %d HANDLES", nranks);
+  NcclLogger::recordEnd(
+    std::make_unique<CommEvent>(
+        0,
+        0,
+        0,
+        nranks,
+        std::string(kRootCollectHandles) + " COMPLETE",
+        ""),
+    getThreadUniqueId(kRootCollectHandles.data()));
 
   // Send the connect handle for the next rank in the AllGather ring
+  NcclLogger::recordStart(
+    std::make_unique<CommEvent>(
+        0,
+        0,
+        0,
+        nranks,
+        std::string(kRootSendOutHandles) + " Start",
+        ""),
+    getThreadUniqueId(kRootSendOutHandles.data()));
   for (int r=0; r<nranks; ++r) {
     int next = (r+1) % nranks;
     struct ncclSocket sock;
@@ -154,6 +192,15 @@ static void *bootstrapRoot(void* rargs) {
     NCCLCHECKGOTO(ncclSocketClose(&sock), res, out);
   }
   TRACE(NCCL_INIT, "SENT OUT ALL %d HANDLES", nranks);
+  NcclLogger::recordEnd(
+    std::make_unique<CommEvent>(
+        0,
+        0,
+        0,
+        nranks,
+        std::string(kRootSendOutHandles) + " COMPLETE",
+        ""),
+    getThreadUniqueId(kRootSendOutHandles.data()));
 
 out:
   if (listenSock != NULL) {
@@ -233,6 +280,17 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
 
   info.rank = rank;
   info.nranks = nranks;
+
+  NcclLogger::recordStart(
+    std::make_unique<CommEvent>(
+        0,
+        comm->commHash,
+        rank,
+        nranks,
+        std::string(kSocketCreation) + " START",
+        ""),
+    getThreadUniqueId(kSocketCreation.data()));
+
   // Create socket for other ranks to contact me
   NCCLCHECK(ncclSocketInit(&state->listenSock, &bootstrapNetIfAddr, comm->magic, ncclSocketTypeBootstrap, comm->abortFlag));
   NCCLCHECK(ncclSocketListen(&state->listenSock));
@@ -243,6 +301,25 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
   NCCLCHECK(ncclSocketListen(&listenSockRoot));
   NCCLCHECK(ncclSocketGetAddr(&listenSockRoot, &info.extAddressListenRoot));
 
+  NcclLogger::recordEnd(
+    std::make_unique<CommEvent>(
+        0,
+        comm->commHash,
+        rank,
+        nranks,
+        std::string(kSocketCreation) + " COMPLETE",
+        ""),
+    getThreadUniqueId(kSocketCreation.data()));
+
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kGetPeerInfoFromRoot) + " START",
+          ""),
+      getThreadUniqueId(kGetPeerInfoFromRoot.data()));
   // stagger connection times to avoid an overload of the root
   if (nranks > 128) {
     long msec = rank;
@@ -265,13 +342,49 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
   NCCLCHECK(bootstrapNetRecv(&sock, &nextAddr, sizeof(union ncclSocketAddress)));
   NCCLCHECK(ncclSocketClose(&sock));
   NCCLCHECK(ncclSocketClose(&listenSockRoot));
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kGetPeerInfoFromRoot) + " COMPLETE",
+          ""),
+      getThreadUniqueId(kGetPeerInfoFromRoot.data()));
 
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kConnectToPeer) + " START",
+          ""),
+      getThreadUniqueId(kConnectToPeer.data()));
   NCCLCHECK(ncclSocketInit(&state->ringSendSocket, &nextAddr, comm->magic, ncclSocketTypeBootstrap, comm->abortFlag));
   NCCLCHECK(ncclSocketConnect(&state->ringSendSocket));
   // Accept the connect request from the previous rank in the AllGather ring
   NCCLCHECK(ncclSocketInit(&state->ringRecvSocket));
   NCCLCHECK(ncclSocketAccept(&state->ringRecvSocket, &state->listenSock));
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kConnectToPeer) + " COMPLETE",
+          ""),
+      getThreadUniqueId(kConnectToPeer.data()));
 
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kConstruction) + " START",
+          ""),
+      getThreadUniqueId(kConstruction.data()));
   // AllGather all listen handlers
   NCCLCHECK(ncclCalloc(&state->peerCommAddresses, nranks));
   NCCLCHECK(ncclSocketGetAddr(&state->listenSock, state->peerCommAddresses+rank));
@@ -289,6 +402,15 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
   NCCLCHECK(ncclProxyInit(comm, proxySocket, state->peerProxyAddresses));
 
   TRACE(NCCL_INIT, "rank %d nranks %d - DONE", rank, nranks);
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kConstruction) + " COMPLETE",
+          ""),
+      getThreadUniqueId(kConstruction.data()));
 
   return ncclSuccess;
 }
