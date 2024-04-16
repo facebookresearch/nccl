@@ -39,6 +39,7 @@ extern "C" {
 #define NCCL_ALLTOALL_SUPPORTED
 #define NCCL_COMM_GET_UNIQUE_HASH
 #define NCCL_COMM_DUMP
+#define NCCL_COMM_DESCRIPTION
 
 #ifndef __CUDA_FP8_TYPES_EXIST__
 #undef NCCL_ENABLE_FP8
@@ -93,6 +94,8 @@ typedef struct ncclConfig_v21700 {
   /* attributes that users can customize after initialization using ncclCommSetInfo. */
   const char* algoStr;
   const char* protoStr;
+  /* communicatior process group information. */
+  const char* commDesc;
 } ncclConfig_t;
 
 /* Config initializer must be assigned to initialize config structure when it is created.
@@ -110,7 +113,8 @@ typedef struct ncclConfig_v21700 {
   NCCL_CONFIG_UNDEF_PTR,                    /* netName */               \
   NCCL_CONFIG_UNDEF_INT,                    /* splitShare */            \
   NCCL_CONFIG_UNDEF_PTR,                    /* algoStr */               \
-  NCCL_CONFIG_UNDEF_PTR                     /* protoStr */              \
+  NCCL_CONFIG_UNDEF_PTR,                    /* protoStr */              \
+  NCCL_CONFIG_UNDEF_PTR                     /* commDesc */              \
 }
 
 /* Return the NCCL_VERSION_CODE of the NCCL library in the supplied integer.
@@ -590,6 +594,12 @@ ncclResult_t pncclWinFree(ncclComm_t comm, ncclWin_t win);
 
 ncclResult_t  ncclCommGetUniqueHash(ncclComm_t comm, uint64_t* uniqueHash);
 ncclResult_t  pncclCommGetUniqueHash(ncclComm_t comm, uint64_t* uniqueHash);
+
+/*
+ * Return the description  of the communicator.
+ */
+ncclResult_t  ncclCommGetDesc(ncclComm_t comm, char* desc);
+ncclResult_t  pncclCommGetDesc(ncclComm_t comm, char* desc);
 
 #ifdef __cplusplus
 } // end extern "C"

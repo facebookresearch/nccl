@@ -9,6 +9,8 @@ int main(int argc, char* argv[]) {
   ncclComm_t comm;
   cudaStream_t stream;
   int* userBuff = NULL;
+  ncclConfig_t config = NCCL_CONFIG_INITIALIZER;
+  config.commDesc = "example_pg";
 
   ncclUniqueId ncclId;
   NCCLCHECK(ncclGetUniqueId(&ncclId));
@@ -17,7 +19,7 @@ int main(int argc, char* argv[]) {
 
   CUDACHECK(cudaSetDevice(localRank));
   CUDACHECK(cudaStreamCreate(&stream));
-  NCCLCHECK(ncclCommInitRank(&comm, nproc, ncclId, rank));
+  NCCLCHECK(ncclCommInitRankConfig(&comm, nproc, ncclId, rank, &config));
 
   CUDACHECK(cudaMalloc(&userBuff, count * sizeof(int)));
   NCCLCHECK(ncclAllReduce(
@@ -27,6 +29,12 @@ int main(int argc, char* argv[]) {
   uint64_t ncclCommHash;
   NCCLCHECK(ncclCommGetUniqueHash(comm, &ncclCommHash));
   printf("ncclCommHash %lx\n", ncclCommHash);
+#endif
+
+#ifdef NCCL_COMM_DESCRIPTION
+  char commDesc[10];
+  NCCLCHECK(ncclCommGetDesc(comm, commDesc));
+  printf("nccl commDesc %s\n", commDesc);
 #endif
 
 #ifdef NCCL_COMM_DUMP

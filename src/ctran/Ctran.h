@@ -56,29 +56,30 @@
 
 extern __thread int ncclGroupDepth;
 
-#define CTRAN_COLL_INFO(                                                                                                                     \
-    algoStr, sendbuff, recvbuff, count, datatype, peer, comm, stream)                                                                        \
-  do {                                                                                                                                       \
-    INFO(                                                                                                                                    \
-        NCCL_COLL,                                                                                                                           \
-        "%s: opCount %lx sendbuff %p recvbuff %p count %zi datatype %d peer %d comm %p commHash %lx [nranks=%d, localRanks=%d] stream=%p\n", \
-        algoStr,                                                                                                                             \
-        comm->opCount,                                                                                                                       \
-        sendbuff,                                                                                                                            \
-        recvbuff,                                                                                                                            \
-        count,                                                                                                                               \
-        datatype,                                                                                                                            \
-        peer,                                                                                                                                \
-        comm,                                                                                                                                \
-        comm->commHash,                                                                                                                      \
-        comm->nRanks,                                                                                                                        \
-        comm->localRanks,                                                                                                                    \
-        stream);                                                                                                                             \
-    /* Increase only for single op. Grouped-op uses same opCount and increase                                                                \
-     * at groupEnd */                                                                                                                        \
-    if (ncclGroupDepth == 0) {                                                                                                               \
-      comm->opCount++;                                                                                                                       \
-    }                                                                                                                                        \
+#define CTRAN_COLL_INFO(                                                                                                                                 \
+    algoStr, sendbuff, recvbuff, count, datatype, peer, comm, stream)                                                                                    \
+  do {                                                                                                                                                   \
+    INFO(                                                                                                                                                \
+        NCCL_COLL,                                                                                                                                       \
+        "%s: opCount %lx sendbuff %p recvbuff %p count %zi datatype %d peer %d comm %p commHash %lx commDesc %s [nranks=%d, localRanks=%d] stream=%p\n", \
+        algoStr,                                                                                                                                         \
+        comm->opCount,                                                                                                                                   \
+        sendbuff,                                                                                                                                        \
+        recvbuff,                                                                                                                                        \
+        count,                                                                                                                                           \
+        datatype,                                                                                                                                        \
+        peer,                                                                                                                                            \
+        comm,                                                                                                                                            \
+        comm->commHash,                                                                                                                                  \
+        comm->config.commDesc,                                                                                                                           \
+        comm->nRanks,                                                                                                                                    \
+        comm->localRanks,                                                                                                                                \
+        stream);                                                                                                                                         \
+    /* Increase only for single op. Grouped-op uses same opCount and increase                                                                            \
+     * at groupEnd */                                                                                                                                    \
+    if (ncclGroupDepth == 0) {                                                                                                                           \
+      comm->opCount++;                                                                                                                                   \
+    }                                                                                                                                                    \
   } while (0)
 
 class Ctran {

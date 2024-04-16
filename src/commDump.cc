@@ -40,6 +40,7 @@ static void dumpCommInfo(
   map["nRanks"] = std::to_string(comm->nRanks);
   map["localRanks"] = std::to_string(comm->localRanks);
   map["nNodes"] = std::to_string(comm->nNodes);
+  map["commDesc"] = comm->config.commDesc;
 
   // Still only dump rings on rank 0 because it is a large amount of data
   if (comm->rank == 0) {
@@ -56,10 +57,11 @@ static void dumpCollTrace(
 
     INFO(
         NCCL_ALL,
-        "CommDump: COLLTRACE dump from rank %d comm %p commHash %lx: %zu past, %zu pending, %d current collective records",
+        "CommDump: COLLTRACE dump from rank %d comm %p commHash %lx commDesc %s : %zu past, %zu pending, %d current collective records",
         comm->rank,
         comm,
         comm->commHash,
+        comm->config.commDesc,
         dump.pastColls.size(),
         dump.pendingColls.size(),
         dump.currentColl == nullptr ? 0 : 1);
@@ -88,10 +90,11 @@ static void dumpProxyTrace(
 
     INFO(
         NCCL_ALL,
-        "CommDump: PROXYTRACE dump from rank %d comm %p commHash %lx: %zu past collectives, %zu active network operations",
+        "CommDump: PROXYTRACE dump from rank %d comm %p commHash %lx commDesc %s: %zu past collectives, %zu active network operations",
         comm->rank,
         comm,
         comm->commHash,
+        comm->config.commDesc,
         dump.pastColls.size(),
         dump.activeOps.size());
 

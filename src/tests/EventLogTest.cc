@@ -64,12 +64,12 @@ TEST_F(EventLogTest, CommInit) {
   EXPECT_THAT(
       stdoutContent,
       ::testing::HasSubstr(
-          "commHash " + hashToHexStr(commHash) + " CommInitRank - Init START"));
+          "commHash " + hashToHexStr(commHash) + " commDesc undefined CommInitRank - Init START"));
   EXPECT_THAT(
       stdoutContent,
       ::testing::HasSubstr(
           "commHash " + hashToHexStr(commHash) +
-          " CommInitRank - Init COMPLETE"));
+          " commDesc undefined CommInitRank - Init COMPLETE"));
 
   OMIT_LOG_START;
   NCCLCHECK_TEST(ncclCommDestroy(comm));
@@ -115,11 +115,11 @@ TEST_F(EventLogTest, CommSplit) {
   EXPECT_THAT(
       stdoutContent,
       ::testing::HasSubstr(
-          "commHash " + hashToHexStr(commHash) + " CommSplit - Init START"));
+          "commHash " + hashToHexStr(commHash) + " commDesc undefined CommSplit - Init START"));
   EXPECT_THAT(
       stdoutContent,
       ::testing::HasSubstr(
-          "commHash " + hashToHexStr(commHash) + " CommSplit - Init COMPLETE"));
+          "commHash " + hashToHexStr(commHash) + " commDesc undefined CommSplit - Init COMPLETE"));
 
   OMIT_LOG_START;
   NCCLCHECK_TEST(ncclCommDestroy(newcomm));

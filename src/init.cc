@@ -1698,9 +1698,9 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
 
   timerBegin = std::chrono::steady_clock::now();
 
-  INFO(NCCL_INIT,"comm %p rank %d nranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx %s - Init START",
+  INFO(NCCL_INIT,"comm %p rank %d nranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx commDesc %s %s - Init START",
        comm, comm->rank, comm->nRanks, comm->cudaDev, comm->nvmlDev, comm->busId, (unsigned long long)hashUniqueId(job->commId), comm->commHash,
-       job->parent ? "CommSplit" : "CommInitRank");
+       comm->config.commDesc, job->parent ? "CommSplit" : "CommInitRank");
 
   NcclLogger::recordStart(
       std::make_unique<CommEvent>(
@@ -1758,9 +1758,9 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
   NCCLCHECKGOTO(collTraceInit(comm), res, fail);
 
   timerDeltaMs = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - timerBegin).count() * 1000;
-  INFO(NCCL_INIT,"comm %p rank %d nranks %d localrank %d localranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx %s - Init COMPLETE in %.2f ms",
+  INFO(NCCL_INIT,"comm %p rank %d nranks %d localrank %d localranks %d cudaDev %d nvmlDev %d busId %lx commId 0x%llx commHash %lx commDesc %s %s - Init COMPLETE in %.2f ms",
        comm, comm->rank, comm->nRanks, comm->localRank, comm->localRanks, comm->cudaDev, comm->nvmlDev, comm->busId,
-       (unsigned long long)hashUniqueId(job->commId), comm->commHash, job->parent ? "CommSplit" : "CommInitRank", timerDeltaMs);
+       (unsigned long long)hashUniqueId(job->commId), comm->commHash, comm->config.commDesc, job->parent ? "CommSplit" : "CommInitRank", timerDeltaMs);
 
   NcclLogger::recordEnd(
       std::make_unique<CommEvent>(
@@ -1939,6 +1939,9 @@ static ncclResult_t parseCommConfig(ncclComm_t comm, ncclConfig_t *config) {
   NCCL_CONFIG_DEFAULT(internalConfigPtr, netName, NCCL_CONFIG_UNDEF_PTR, NULL, "Net name", "%s");
   NCCL_CONFIG_DEFAULT(internalConfigPtr, splitShare, NCCL_CONFIG_UNDEF_INT, 0, "Split share", "%d");
 
+  /* set default communicator description */
+  NCCL_CONFIG_DEFAULT(internalConfigPtr, commDesc, NCCL_CONFIG_UNDEF_PTR, "undefined", "Comm description", "%s");
+
   /* assign config to communicator */
   comm->config.blocking = internalConfigPtr->blocking;
   comm->config.cgaClusterSize = internalConfigPtr->cgaClusterSize;
@@ -1948,6 +1951,7 @@ static ncclResult_t parseCommConfig(ncclComm_t comm, ncclConfig_t *config) {
   comm->config.splitShare = internalConfigPtr->splitShare;
   comm->config.algo = internalConfigPtr->algo;
   comm->config.proto = internalConfigPtr->proto;
+  comm->config.commDesc = internalConfigPtr->commDesc;
 
   NCCLCHECKGOTO(envConfigOverride(comm), ret, fail);
 
@@ -1972,11 +1976,12 @@ static ncclResult_t ncclCommInitWorld(const ncclComm_t comm) {
   if (!ncclCommWorld) {
     NCCLCHECK(ncclCalloc(&ncclCommWorld, 1));
     NCCLCHECKGOTO(ncclCommDup(ncclCommWorld, comm), res, exit);
-    INFO(NCCL_INIT, "Initialized ncclCommWorld for nRanks=%d, nNodes=%d, localRanks=%d, commHash=%lx",
+    INFO(NCCL_INIT, "Initialized ncclCommWorld for nRanks=%d, nNodes=%d, localRanks=%d, commHash=%lx, commDesc=%s",
       ncclCommWorld->nRanks,
       ncclCommWorld->nNodes,
       ncclCommWorld->localRanks,
-      ncclCommWorld->commHash);
+      ncclCommWorld->commHash,
+      ncclCommWorld->config.commDesc);
   }
 
 exit:
@@ -2407,7 +2412,7 @@ ncclResult_t ncclCommDestroy(ncclComm_t comm) {
   NVTX3_FUNC_WITH_PARAMS(CommDestroy, CommInitRankSchema, payload)
 
   int64_t busId = comm->busId;
-  INFO(NCCL_INIT, "comm %p commHash %lx rank %d nRanks %d cudaDev %d busId %lx - Destroy START", comm, comm->commHash, rank, nranks, cudaDev, busId);
+  INFO(NCCL_INIT, "comm %p commHash %lx commDesc %s rank %d nRanks %d cudaDev %d busId %lx - Destroy START", comm, comm->commHash, comm->config.commDesc, rank, nranks, cudaDev, busId);
 
   NcclLogger::recordStart(
       std::make_unique<CommEvent>(
@@ -2429,7 +2434,7 @@ ncclResult_t ncclCommDestroy(ncclComm_t comm) {
   NCCLCHECK(ncclCommEnsureReady(comm));
 
   NCCLCHECK(commReclaim(comm));
-  INFO(NCCL_INIT,"comm %p commHash %lx rank %d nranks %d cudaDev %d busId %lx - Destroy COMPLETE", comm, comm->commHash, rank, nranks, cudaDev, busId);
+  INFO(NCCL_INIT,"comm %p commHash %lx commDesc %s rank %d nranks %d cudaDev %d busId %lx - Destroy COMPLETE", comm, comm->commHash, comm->config.commDesc, rank, nranks, cudaDev, busId);
 
   NcclLogger::recordEnd(
       std::make_unique<CommEvent>(
@@ -2453,7 +2458,7 @@ ncclResult_t ncclCommAbort(ncclComm_t comm) {
   NVTX3_FUNC_WITH_PARAMS(CommAbort, CommInitRankSchema, payload)
 
   int64_t busId = comm->busId;
-  INFO(NCCL_INIT, "comm %p commHash %lx rank %d nRanks %d cudaDev %d busId %lx - Abort START", comm, comm->commHash, rank, nranks, cudaDev, busId);
+  INFO(NCCL_INIT, "comm %p commHash %lx commDesc %s rank %d nRanks %d cudaDev %d busId %lx - Abort START", comm, comm->commHash, comm->config.commDesc, rank, nranks, cudaDev, busId);
 
   NcclLogger::recordStart(
       std::make_unique<CommEvent>(
@@ -2476,7 +2481,7 @@ ncclResult_t ncclCommAbort(ncclComm_t comm) {
   ncclCommEnsureReady(comm);
 
   (void) commReclaim(comm);
-  INFO(NCCL_INIT,"comm %p commHash %lx rank %d nranks %d cudaDev %d busId %lx - Abort COMPLETE", comm, comm->commHash, rank, nranks, cudaDev, busId);
+  INFO(NCCL_INIT,"comm %p commHash %lx commDesc %s rank %d nranks %d cudaDev %d busId %lx - Abort COMPLETE", comm, comm->commHash, comm->config.commDesc, rank, nranks, cudaDev, busId);
 
   NcclLogger::recordEnd(
       std::make_unique<CommEvent>(
@@ -2496,8 +2501,8 @@ ncclResult_t ncclCommSplit(ncclComm_t comm, int color, int key, ncclComm_t *newc
   NCCLCHECKGOTO(PtrCheck(comm, "CommSplit", "comm"), res, fail);
   NCCLCHECKGOTO(PtrCheck(newcomm, "CommSplit", "newcomm"), res, fail);
 
-  INFO(NCCL_INIT, "Parent comm %p commHash %lx rank %d color %d key %d - CommSplit START",
-       comm, comm->commHash, comm->rank, color, key);
+  INFO(NCCL_INIT, "Parent comm %p commHash %lx commDesc %s rank %d color %d key %d - CommSplit START",
+       comm, comm->commHash, comm->config.commDesc, comm->rank, color, key);
 
   /* *newcomm should be NCCL_COMM_NULL until comm split fully complete. */
   *newcomm = NCCL_COMM_NULL;

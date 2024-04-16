@@ -297,7 +297,7 @@ CtranIb::CtranIb(ncclComm* comm) {
   }
 
   if (foundPort) {
-    INFO(NCCL_INIT, "CTRAN-IB: using device %s, port %d commHash %lx", s.devNames[comm->cudaDev].c_str(), this->pimpl_->port, comm->commHash);
+    INFO(NCCL_INIT, "CTRAN-IB: using device %s, port %d commHash %lx commDesc %s", s.devNames[comm->cudaDev].c_str(), this->pimpl_->port, comm->commHash, comm->config.commDesc);
   } else {
     WARN("CTRAN-IB : No active port found on device %s. Disable IB backend.", s.devNames[comm->cudaDev].c_str());
     throw std::runtime_error(

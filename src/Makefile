@@ -47,6 +47,7 @@ LIBSRCFILES += logger/Logger.cc logger/EventMgr.cc
 LIBSRCFILES += window.cc
 LIBSRCFILES += commHash.cc
 LIBSRCFILES += commDump.cc
+LIBSRCFILES += commDesc.cc
 
 INCLUDES := -Iinclude
 INCLUDES += -Ialgorithms -Ialgorithms/allreduce
