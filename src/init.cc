@@ -980,6 +980,13 @@ static void addPeerInfoToGlobal(struct ncclComm* comm) {
   }
 }
 
+/* initTransportsRank steps */
+static constexpr std::string_view kInitTransportsRank = "InitTransportsRank";
+static constexpr std::string_view kPeerInfoAllGather = "PeerInfoAllGather";
+static constexpr std::string_view kTopoCompute = "TopoCompute";
+static constexpr std::string_view kTopoAllGather = "TopoAllGather";
+static constexpr std::string_view kConnectRingTrees = "ConnectRingTrees";
+
 static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* parent = NULL) {
   // We use 2 AllGathers
   // 1. { peerInfo, comm, compCap}
@@ -1027,9 +1034,9 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
           comm->commHash,
           rank,
           nranks,
-          "PeerInfoAllGather START",
+          std::string(kPeerInfoAllGather) + " START",
           parent ? "CommSplit" : "CommInitRank"),
-      getThreadUniqueId("PeerInfoAllGather"));
+      getThreadUniqueId(kPeerInfoAllGather.data()));
 
   NCCLCHECKGOTO(ncclCalloc(&comm->peerInfo, nranks+1), ret, fail); // Extra rank to represent CollNet root
   NCCLCHECKGOTO(fillInfo(comm, comm->peerInfo+rank, comm->commHash), ret, fail);
@@ -1051,9 +1058,9 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
           comm->commHash,
           rank,
           nranks,
-          "PeerInfoAllGather COMPLETE",
+          std::string(kPeerInfoAllGather) + " COMPLETE",
           parent ? "CommSplit" : "CommInitRank"),
-      getThreadUniqueId("PeerInfoAllGather"));
+      getThreadUniqueId(kPeerInfoAllGather.data()));
   // AllGather1 - end
 
   do {
@@ -1093,6 +1100,15 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
     comm->intraBarrierGate = 0;
   } while(0);
 
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kTopoCompute) + " START",
+          parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId(kTopoCompute.data()));
   // Topo detection / System graph creation
   NCCLCHECKGOTO(ncclTopoGetSystem(comm, &comm->topo), ret, fail);
   // Compute paths between GPUs and NICs
@@ -1174,6 +1190,15 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
     struct ncclTopoGraph* dumpGraphs[4] = { &ringGraph, &treeGraph, &collNetGraph, &nvlsGraph };
     NCCLCHECKGOTO(ncclTopoDumpGraphs(comm->topo, 4, dumpGraphs), ret, fail);
   }
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kTopoCompute) + " COMPLETE",
+          parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId(kTopoCompute.data()));
 
   // AllGather3 - begin
   NcclLogger::recordStart(
@@ -1182,9 +1207,9 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
           comm->commHash,
           rank,
           nranks,
-          "TopoAllGather START",
+          std::string(kTopoAllGather) + " START",
           parent ? "CommSplit" : "CommInitRank"),
-      getThreadUniqueId("TopoAllGather"));
+      getThreadUniqueId(kTopoAllGather.data()));
 
   NCCLCHECKGOTO(ncclCalloc(&allGather3Data, nranks), ret, fail);
 
@@ -1302,13 +1327,22 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
           comm->commHash,
           rank,
           nranks,
-          "TopoAllGather COMPLETE",
+          std::string(kTopoAllGather) + " COMPLETE",
           parent ? "CommSplit" : "CommInitRank"),
-      getThreadUniqueId("TopoAllGather"));
+      getThreadUniqueId(kTopoAllGather.data()));
   // AllGather3 - end
 
   TRACE(NCCL_INIT, "rank %d nranks %d - BUILT %d TREES/RINGS", rank, nranks, comm->nChannels);
 
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kConnectRingTrees) + " START",
+          parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId(kConnectRingTrees.data()));
   char line[1024];
   line[0]='\0';
   for (int c=0; c<comm->nChannels; c++) {
@@ -1382,6 +1416,15 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
   if (comm->collNetSupport > 0) collNetTrySetup(comm, parent, &collNetGraph);
 
   TRACE(NCCL_INIT, "rank %d nranks %d - CONNECTED %d RINGS AND TREES", rank, nranks, comm->nChannels);
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          0,
+          comm->commHash,
+          rank,
+          nranks,
+          std::string(kConnectRingTrees) + " COMPLETE",
+          parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId(kConnectRingTrees.data()));
 
   // Compute time models for algorithm and protocol combinations
   NCCLCHECKGOTO(ncclTopoTuneModel(comm, comm->minCompCap, comm->maxCompCap, graphs), ret, fail);
@@ -1669,7 +1712,25 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
           job->parent ? "CommSplit" : "CommInitRank"),
       getThreadUniqueId("Init"));
 
+  NcclLogger::recordStart(
+      std::make_unique<CommEvent>(
+          (unsigned long long)hashUniqueId(job->commId),
+          comm->commHash,
+          comm->rank,
+          comm->nRanks,
+          std::string(kInitTransportsRank) + " START",
+          job->parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId(kInitTransportsRank.data()));
   NCCLCHECKGOTO(initTransportsRank(comm, job->parent), res, fail);
+  NcclLogger::recordEnd(
+      std::make_unique<CommEvent>(
+          (unsigned long long)hashUniqueId(job->commId),
+          comm->commHash,
+          comm->rank,
+          comm->nRanks,
+          std::string(kInitTransportsRank) + " COMPLETE",
+          job->parent ? "CommSplit" : "CommInitRank"),
+      getThreadUniqueId(kInitTransportsRank.data()));
 
   NCCLCHECKGOTO(ncclLoadTunerPlugin(&comm->tuner), res, fail);
   if (comm->tuner) {
