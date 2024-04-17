@@ -87,6 +87,7 @@ struct CommEvent : public LoggerEvent {
   CommEvent(
       unsigned long long commId,
       uint64_t commHash,
+      std::string commDesc,
       int rank,
       int nRanks,
       std::string stage,
@@ -94,6 +95,7 @@ struct CommEvent : public LoggerEvent {
       double delta = 0.0)
       : commId(commId),
         commHash(commHash),
+        commDesc(commDesc),
         rank(rank),
         nRanks(nRanks),
         stage(stage),
@@ -115,6 +117,7 @@ struct CommEvent : public LoggerEvent {
  private:
   unsigned long long commId;
   uint64_t commHash;
+  std::string commDesc;
   int rank;
   int nRanks;
   std::string stage;

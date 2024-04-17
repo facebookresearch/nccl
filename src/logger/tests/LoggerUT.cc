@@ -157,8 +157,9 @@ TEST_F(NcclLoggerTest, EventSyncStdout) {
   NcclLogger::init();
   unsigned long long commId = 12881726743803089884ULL;
   uint64_t commHash = 17952292033056090124ULL;
+  std::string commDesc = "test_pg";
   NcclLogger::record(std::make_unique<CommEvent>(
-      commId, commHash, 1, 3, "CommInit START", "CommInitRank"));
+      commId, commHash, commDesc, 1, 3, "CommInit START", "CommInitRank"));
 
   std::string output = testing::internal::GetCapturedStdout();
   EXPECT_THAT(output, testing::IsEmpty());
@@ -173,8 +174,9 @@ TEST_F(NcclLoggerTest, EventAsyncStdout) {
   NcclLogger::init();
   unsigned long long commId = 12881726743803089884ULL;
   uint64_t commHash = 17952292033056090124ULL;
+  std::string commDesc = "test_pg";
   NcclLogger::record(std::make_unique<CommEvent>(
-      commId, commHash, 1, 3, "CommInit START", "CommInitRank"));
+      commId, commHash, commDesc, 1, 3, "CommInit START", "CommInitRank"));
 
   // Give async thread a chance to run
   sleep(3);
@@ -193,8 +195,9 @@ TEST_F(NcclLoggerTest, CommSyncEventFile) {
   NcclLogger::init();
   unsigned long long commId = 12881726743803089884ULL;
   uint64_t commHash = 17952292033056090124ULL;
+  std::string commDesc = "test_pg";
   NcclLogger::record(std::make_unique<CommEvent>(
-      commId, commHash, 1, 3, "CommInit START", "CommInitRank"));
+      commId, commHash, commDesc, 1, 3, "CommInit START", "CommInitRank"));
   this->finishLogging();
 
   auto output = this->readLogs(this->testCommEventFilePath);
@@ -210,8 +213,9 @@ TEST_F(NcclLoggerTest, CommAsyncEventFile) {
   NcclLogger::init();
   unsigned long long commId = 12881726743803089884ULL;
   uint64_t commHash = 17952292033056090124ULL;
+  std::string commDesc = "test_pg";
   NcclLogger::record(std::make_unique<CommEvent>(
-      commId, commHash, 1, 3, "Init START", "CommInitRank"));
+      commId, commHash, commDesc, 1, 3, "Init START", "CommInitRank"));
 
   // Give async thread a chance to run
   sleep(3);

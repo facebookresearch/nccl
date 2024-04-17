@@ -13,6 +13,7 @@ static std::vector<std::string> commkeys = {
     "attempt",
     "time",
     "commHash",
+    "commDesc",
     "rank",
     "nranks",
     "stage",
@@ -72,6 +73,7 @@ std::string CommEvent::serialize() {
       "commHash",
       static_cast<int64_t>(
           commHash % INT64_MAX)); // scuba requires bigint for integer
+  entry.addNormalValue("commDesc", commDesc);
   entry.addIntValue("rank", rank);
   entry.addIntValue("nranks", nRanks);
 
@@ -98,6 +100,7 @@ bool CommEvent::toScuba(std::string& tableName) {
 
   entry.addIntValue("commId", commId);
   entry.addIntValue("commHash", commHash);
+  entry.addNormalValue("commDesc", commDesc);
   entry.addIntValue("rank", rank);
   entry.addIntValue("nranks", nRanks);
 

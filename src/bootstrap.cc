@@ -126,6 +126,7 @@ static void *bootstrapRoot(void* rargs) {
     std::make_unique<CommEvent>(
         0,
         0,
+        "",
         0,
         nranks,
         std::string(kRootCollectHandles) + " START",
@@ -167,6 +168,7 @@ static void *bootstrapRoot(void* rargs) {
     std::make_unique<CommEvent>(
         0,
         0,
+        "",
         0,
         nranks,
         std::string(kRootCollectHandles) + " COMPLETE",
@@ -178,6 +180,7 @@ static void *bootstrapRoot(void* rargs) {
     std::make_unique<CommEvent>(
         0,
         0,
+        "",
         0,
         nranks,
         std::string(kRootSendOutHandles) + " Start",
@@ -196,6 +199,7 @@ static void *bootstrapRoot(void* rargs) {
     std::make_unique<CommEvent>(
         0,
         0,
+        "",
         0,
         nranks,
         std::string(kRootSendOutHandles) + " COMPLETE",
@@ -285,6 +289,7 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
     std::make_unique<CommEvent>(
         0,
         comm->commHash,
+        comm->config.commDesc,
         rank,
         nranks,
         std::string(kSocketCreation) + " START",
@@ -305,6 +310,7 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
     std::make_unique<CommEvent>(
         0,
         comm->commHash,
+        comm->config.commDesc,
         rank,
         nranks,
         std::string(kSocketCreation) + " COMPLETE",
@@ -315,6 +321,7 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kGetPeerInfoFromRoot) + " START",
@@ -346,6 +353,7 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kGetPeerInfoFromRoot) + " COMPLETE",
@@ -356,6 +364,7 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kConnectToPeer) + " START",
@@ -370,6 +379,7 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kConnectToPeer) + " COMPLETE",
@@ -380,6 +390,7 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kConstruction) + " START",
@@ -406,6 +417,7 @@ ncclResult_t bootstrapInit(struct ncclBootstrapHandle* handle, struct ncclComm* 
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kConstruction) + " COMPLETE",

@@ -1032,6 +1032,7 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kPeerInfoAllGather) + " START",
@@ -1056,6 +1057,7 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kPeerInfoAllGather) + " COMPLETE",
@@ -1104,6 +1106,7 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kTopoCompute) + " START",
@@ -1194,6 +1197,7 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kTopoCompute) + " COMPLETE",
@@ -1205,6 +1209,7 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kTopoAllGather) + " START",
@@ -1325,6 +1330,7 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kTopoAllGather) + " COMPLETE",
@@ -1338,6 +1344,7 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kConnectRingTrees) + " START",
@@ -1420,6 +1427,7 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           rank,
           nranks,
           std::string(kConnectRingTrees) + " COMPLETE",
@@ -1646,6 +1654,7 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
         std::make_unique<CommEvent>(
             (unsigned long long)hashUniqueId(job->commId),
             comm->commHash,
+            comm->config.commDesc,
             job->myrank,
             job->nranks,
             "Init bootstrap START",
@@ -1690,6 +1699,7 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
       std::make_unique<CommEvent>(
           (unsigned long long)hashUniqueId(job->commId),
           comm->commHash,
+          comm->config.commDesc,
           comm->rank,
           comm->nRanks,
           "Init bootstrap COMPLETE",
@@ -1706,6 +1716,7 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
       std::make_unique<CommEvent>(
           (unsigned long long)hashUniqueId(job->commId),
           comm->commHash,
+          comm->config.commDesc,
           comm->rank,
           comm->nRanks,
           "Init START",
@@ -1716,6 +1727,7 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
       std::make_unique<CommEvent>(
           (unsigned long long)hashUniqueId(job->commId),
           comm->commHash,
+          comm->config.commDesc,
           comm->rank,
           comm->nRanks,
           std::string(kInitTransportsRank) + " START",
@@ -1726,6 +1738,7 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
       std::make_unique<CommEvent>(
           (unsigned long long)hashUniqueId(job->commId),
           comm->commHash,
+          comm->config.commDesc,
           comm->rank,
           comm->nRanks,
           std::string(kInitTransportsRank) + " COMPLETE",
@@ -1766,6 +1779,7 @@ static ncclResult_t ncclCommInitRankFunc(struct ncclAsyncJob* job_) {
       std::make_unique<CommEvent>(
           (unsigned long long)hashUniqueId(job->commId),
           comm->commHash,
+          comm->config.commDesc,
           comm->rank,
           comm->nRanks,
           "Init COMPLETE",
@@ -2237,6 +2251,7 @@ static ncclResult_t commFinalize(ncclComm_t comm, bool userCalled) {
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           comm->rank,
           comm->nRanks,
           "CommFinalize START",
@@ -2258,6 +2273,7 @@ static ncclResult_t commFinalize(ncclComm_t comm, bool userCalled) {
       std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           comm->rank,
           comm->nRanks,
           "CommFinalize COMPLETE",
@@ -2344,6 +2360,7 @@ static ncclResult_t commReclaim(ncclComm_t comm) {
       NcclLogger::record(std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           comm->rank,
           comm->nRanks,
           "commDestroySync COMPLETE",
@@ -2374,6 +2391,7 @@ static ncclResult_t commReclaim(ncclComm_t comm) {
       NcclLogger::record(std::make_unique<CommEvent>(
           0,
           comm->commHash,
+          comm->config.commDesc,
           comm->rank,
           comm->nRanks,
           "ncclProxyStop COMPLETE",
@@ -2416,7 +2434,7 @@ ncclResult_t ncclCommDestroy(ncclComm_t comm) {
 
   NcclLogger::recordStart(
       std::make_unique<CommEvent>(
-          0, comm->commHash, comm->rank, comm->nRanks, "Destroy START", ""),
+          0, comm->commHash, comm->config.commDesc, comm->rank, comm->nRanks, "Destroy START", ""),
       getThreadUniqueId("Destroy"));
 
   // Try and prevent a double free of the comm struct (user error)
@@ -2438,7 +2456,7 @@ ncclResult_t ncclCommDestroy(ncclComm_t comm) {
 
   NcclLogger::recordEnd(
       std::make_unique<CommEvent>(
-          0, comm->commHash, rank, nranks, "Destroy COMPLETE", ""),
+          0, comm->commHash, comm->config.commDesc, rank, nranks, "Destroy COMPLETE", ""),
       getThreadUniqueId("Destroy"));
 
   return ncclSuccess;
@@ -2462,7 +2480,7 @@ ncclResult_t ncclCommAbort(ncclComm_t comm) {
 
   NcclLogger::recordStart(
       std::make_unique<CommEvent>(
-          0, comm->commHash, rank, nranks, "Abort START", ""),
+          0, comm->commHash, comm->config.commDesc, rank, nranks, "Abort START", ""),
       getThreadUniqueId("Abort"));
 
   // Ask anything that might still be running on the device to quit
@@ -2485,7 +2503,7 @@ ncclResult_t ncclCommAbort(ncclComm_t comm) {
 
   NcclLogger::recordEnd(
       std::make_unique<CommEvent>(
-          0, comm->commHash, rank, nranks, "Abort COMPLETE", ""),
+          0, comm->commHash, comm->config.commDesc, rank, nranks, "Abort COMPLETE", ""),
       getThreadUniqueId("Abort"));
 
   return ncclSuccess;
